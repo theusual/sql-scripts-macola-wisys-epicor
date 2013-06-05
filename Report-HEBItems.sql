@@ -1,0 +1,3 @@
+SELECT DISTINCT IM.item_no,IM.item_desc_1 +IM.item_desc_2, IM.item_weight, IM.drawing_release_no+'-'+IM.drawing_revision_no, IM.cube_height, IM.cube_width, IM.cube_length FROM dbo.oehdrhst_sql OH JOIN dbo.oelinhst_sql OL ON OL.inv_no = OH.inv_no JOIN dbo.imitmidx_sql IM ON IM.item_no = OL.item_no WHERE bill_to_name like '%HEB%' AND LTRIM(OH.cus_no) != '7171' AND OH.inv_dt > '01/01/2007'
+
+SELECT * FROM dbo.oehdrhst_sql WHERE bill_to_name like '%HEB%'

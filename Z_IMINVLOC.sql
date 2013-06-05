@@ -1,0 +1,11 @@
+USE [001]
+SELECT				  item_no, MAX(status), MAX(mult_bin_fg) AS [mult_bin_fg], SUM(qty_on_hand) AS [qty_on_hand], SUM(qty_allocated) AS [qty_allocated], SUM(qty_bkord) AS [qty_bkord], SUM(qty_on_ord) AS [qty_on_ord], MAX(reorder_lvl) as [reorder_lvl], MAX(ord_up_to_lvl) as [ord_up_to_lvl], MAX(price) AS [price], MAX(avg_cost) as [avg_cost], 
+                      MAX(last_cost) AS [last_cost], MAX(std_cost) AS [std_cost], MAX(starting_sls_dt) AS [starting_Sls_dt], MAX(ending_sls_dt) AS [ending_sls_dt], MAX(last_sold_dt) AS [last_sold_dt], MAX(sls_price) AS [sls_price], SUM(qty_last_sold) as [qty_last_sold], MAX(cycle_count_cd) AS [cycle_count_cd], 
+                      MAX(last_count_dt) AS [last_count_dt], MAX(frz_cost) AS [frz_cost], SUM(frz_qty) AS [frz_qty], MAX(frz_dt) AS [frz_dt], SUM(usage_ptd) AS [usage_ptd], SUM(qty_sld_ptd) as [qty_sld_ptd], SUM(qty_scrp_ptd) as [qty_scrp_ptd], SUM(sls_ptd) AS [sls_ptd], MAX(cost_ptd) AS [cost_ptd], SUM(usage_ytd) as [usage_ytd], 
+                      SUM(qty_sold_ytd) AS [qty_sold_ytd], SUM(sls_ytd) as [sls_ytd], MAX(cost_ytd) AS [cost_ytd], SUM(prior_year_usage) AS [prior_year_usage], SUM(qty_sold_last_yr) AS [qty_sold_last_yr], SUM(prior_year_sls) AS [prior_year_sls], MAX(cost_last_yr) AS cost_last_yr, 
+                      SUM(avg_usage) AS [avg_usage], 
+                      MAX(vend_no) AS [vend_no], MAX(tax_sched) AS [tax_sched], MAX(prod_cat) AS [prod_cat],  
+                      MAX(cube_width_uom) AS [cube_width_uom], MAX(cube_length_uom) AS [cube_length_uom], MAX(cube_height_uom) AS [cube_height_uom], MAX(cube_width) AS [cube_width], MAX(cube_length) AS [cube_length], MAX(cube_height) AS [cube_height], MAX(cube_qty_per) as [cube_qty_per], MAX(user_def_fld_1) AS [user_def_fld_1], MAX(user_def_fld_2) AS [user_def_fld_2], 
+                      MAX(user_def_fld_3) AS [user_def_fld_3], MAX(user_def_fld_4) AS [user_def_fld_4], MAX(user_def_fld_5) AS [user_def_fld_5]
+FROM                  dbo.iminvloc_sql
+GROUP BY              item_no

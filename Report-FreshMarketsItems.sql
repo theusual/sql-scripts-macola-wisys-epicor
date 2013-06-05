@@ -1,0 +1,1 @@
+SELECT DISTINCT IM.item_no,IM.item_desc_1 +IM.item_desc_2, unit_price FROM dbo.oehdrhst_sql OH JOIN dbo.oelinhst_sql OL ON OL.inv_no = OH.inv_no JOIN dbo.imitmidx_sql IM ON IM.item_no = OL.item_no WHERE OH.cus_no = '               22372' AND unit_price > 0 AND OH.ord_type = 'O'

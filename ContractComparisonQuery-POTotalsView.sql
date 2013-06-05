@@ -1,0 +1,130 @@
+WITH POTotals (item_no, qty_ordered, ord_type) AS (SELECT item_no, SUM (qty_ordered), 'OPEN'
+FROM oeordlin_sql AS OL INNER JOIN oeordhdr_sql AS OH ON OL.ord_no = OH.ord_no
+WHERE ltrim(rtrim(OH.cus_no)) in ('1575','20938')
+AND NOT(ship_instruction_2 like '%DISTRO%') AND NOT(OH.user_def_fld_4 like '%OG%')  /*exclude distros*/
+AND NOT(ship_instruction_2 like '%TURE RE%') AND NOT(OH.user_def_fld_4 like '%ON%')  AND NOT(OH.user_def_fld_4 like '%FR%')  /*exclude FR's*/
+AND NOT(ship_instruction_2 like '%REPLACEMENT%') AND NOT(OH.user_def_fld_4 like '%RP%')   /*exclude replacements*/
+AND NOT(OH.user_def_fld_4 like '%PH%')   /*exclude PH*/
+AND NOT(OL.item_no IN ('OBP-1822BSOBV97'
+,'OBP-182227OBV97'
+,'OBP-363633OBV97'
+,'OBP-404833OBV97'
+,'OBP-BAGHLDR'
+,'OBP-FL07 OBV-97'
+,'VEG-39 B-BK'
+,'VEG-EURO PS BV'
+,'SIDERAIL-OBV97'
+,'EUROTBL1-OBV97'
+,'EUROEC2-OBV97'
+,'EUROEC1-OBV97'
+,'VEG-EURO PS 5BV'
+,'VEG-EURO PS 7BV'
+,'VEG-EUROSBSET 4') AND rtrim(ltrim(OH.cus_alt_adr_cd)) IN ('1051'
+	,'1393'
+	,'1476'
+	,'1522'
+	,'1523'
+	,'1535'
+	,'1772'
+	,'1804'
+	,'2116'
+	,'2202'
+	,'2209'
+	,'2233'
+	,'271'
+	,'317'
+	,'382'
+	,'518'
+	,'821'
+	,'901'
+	,'908'
+	,'918'
+	,'1048'
+	,'2'
+	,'331'
+	,'394'
+	,'494'
+	,'690'
+	,'799'
+	,'866'
+	,'338'
+	,'383'
+	,'535'
+	,'588'
+	,'522'
+	,'653'
+	,'896'
+	,'1963'
+	,'5093'
+	,'3661')) /*Exclude PI Stores that were not to be counted against out %*/
+
+GROUP BY item_no
+
+UNION ALL
+
+SELECT item_no, SUM (qty_ordered), 'CLOSED'
+FROM oelinhst_sql AS OL INNER JOIN oehdrhst_sql AS OH ON OL.inv_no = OH.inv_no INNER JOIN WMActivityReport_Apr2011 AS WMAct ON WMAct.store_no = rtrim(ltrim(OH.cus_alt_adr_cd))
+WHERE ord_dt > '2010-010-05 00:00:00.000' 
+AND ltrim(rtrim(OH.cus_no)) in ('1575','20938')
+AND NOT(ship_instruction_2 like '%DISTRO%') AND NOT(OH.user_def_fld_4 like '%OG%')  /*exclude distros*/
+AND NOT(ship_instruction_2 like '%TURE RE%') AND NOT(OH.user_def_fld_4 like '%ON%')  AND NOT(OH.user_def_fld_4 like '%FR%')  /*exclude FR's*/
+AND NOT(ship_instruction_2 like '%REPLACEMENT%') AND NOT(OH.user_def_fld_4 like '%RP%')   /*exclude replacements*/
+AND NOT(OH.user_def_fld_4 like '%PH%')   /*exclude PH*/
+AND NOT(OL.item_no IN ('OBP-1822BSOBV97'
+,'OBP-182227OBV97'
+,'OBP-363633OBV97'
+,'OBP-404833OBV97'
+,'OBP-BAGHLDR'
+,'OBP-FL07 OBV-97'
+,'VEG-39 B-BK'
+,'VEG-EURO PS BV'
+,'SIDERAIL-OBV97'
+,'EUROTBL1-OBV97'
+,'EUROEC2-OBV97'
+,'EUROEC1-OBV97'
+,'VEG-EURO PS 5BV'
+,'VEG-EURO PS 7BV'
+,'VEG-EUROSBSET 4') AND rtrim(ltrim(OH.cus_alt_adr_cd)) IN ('1051'
+	,'1393'
+	,'1476'
+	,'1522'
+	,'1523'
+	,'1535'
+	,'1772'
+	,'1804'
+	,'2116'
+	,'2202'
+	,'2209'
+	,'2233'
+	,'271'
+	,'317'
+	,'382'
+	,'518'
+	,'821'
+	,'901'
+	,'908'
+	,'918'
+	,'1048'
+	,'2'
+	,'331'
+	,'394'
+	,'494'
+	,'690'
+	,'799'
+	,'866'
+	,'338'
+	,'383'
+	,'535'
+	,'588'
+	,'522'
+	,'653'
+	,'896'
+	,'1963'
+	,'5093'
+	,'3661')) /*Exclude PI Stores that were not to be counted against out %*/
+AND (WMAct.Order_Deadline < '3/22/11')   /*Only include Groups 14 and less on the Acitvity Schedule*/
+GROUP BY item_no)
+
+SELECT item_no, SUM(qty_ordered)
+FROM POTotals
+GROUP BY item_no

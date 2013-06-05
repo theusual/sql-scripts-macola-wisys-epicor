@@ -1,0 +1,4 @@
+USE [001]
+SELECT *
+FROM IMINVLOC_SQL AS IM INNER JOIN IMITMIDX_SQL AS IM2 ON IM.item_no = IM2.item_no
+WHERE IM.qty_on_hand > 0 AND IM2.stocked_fg = 'N'

@@ -1,0 +1,20 @@
+SELECT  IC.[DEPT NAME],     [MARCO item #] AS [Parent Item], [WM SAP PART #], [DESCRIPTION 1], [DESCRIPTION 2], SUM((SLS.[Qty To Ship]*SLS.[Unit Price]))
+FROM    [BG_WMItemChecklist_8-19-11] IC join Z_SALES_HISTORY_2011 SLS on IC.[MARCO ITEM #] = SLS.Item 
+GROUP BY [MARCO ITEM #], IC.[DEPT NAME], [WM SAP PART #], [DESCRIPTION 1], [DESCRIPTION 2]
+
+UNION ALL 
+
+SELECT  'ELECTRONICS', [Item] AS [Parent Item], '100399687', 'MOViE DUMP BIN', 'MOVIE DUMP BIN', SUM((SLS.[Qty To Ship]*SLS.[Unit Price]))
+FROM    Z_SALES_HISTORY_2011 SLS 
+WHERE Item = 'WM-MOVIEDUMPBIN' and Customer = '1575'
+GROUP BY [Item]  
+
+UNION ALL 
+
+SELECT  'CR', 'CR', 0, 'CR', 'CR', SUM((SLS.[Qty To Ship]*SLS.[Unit Price]))
+FROM    Z_SALES_HISTORY_2011 SLS 
+WHERE Customer = '1575' and [Sales] = '20'
+
+SELECT  'AP', 'AP', 0, 'AP', 'AP', Calc, Sales
+FROM    Z_SALES_HISTORY_2011_TOTALS SLS 
+WHERE Customer IN ('1575','122523')

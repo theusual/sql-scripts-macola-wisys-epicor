@@ -1,0 +1,1 @@
+SELECT item_note_4, * FROM imitmidx_Sql WHERE item_no IN (SELECT item_no FROM dbo.oeordlin_sql WHERE LTRIM(cus_no) = '1575')
