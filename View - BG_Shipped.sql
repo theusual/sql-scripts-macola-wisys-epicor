@@ -40,10 +40,12 @@ FROM  oelinhst_sql OL INNER JOIN
                [001].dbo.wsPikPak pp ON ol.line_no = pp.line_no AND ol.ord_no = pp.ord_no LEFT OUTER JOIN
                [001].dbo.wsShipment ws ON ws.shipment = pp.shipment LEFT OUTER JOIN
                [001].dbo.oebolfil_sql BL ON BL.bol_no = ws.bol_no
-WHERE (CONVERT(varchar, CAST(rtrim(oh.inv_dt) AS datetime), 101) > DATEADD(day, - 98, GETDATE())) 
+WHERE (CONVERT(varchar, CAST(rtrim(oh.inv_dt) AS datetime), 101) > DATEADD(day, - 35, GETDATE())) 
 				--AND qty_to_ship > 0  
                 AND (pp.shipped = 'Y') --OR pp.shipped IS NULL)
 				--AND oh.ord_no = '  703477'
+				--Older orders
+				OR OH.oe_po_no IN ('31971720', '31951116', '31772580')
 GROUP BY OL.line_no, oh.ord_no, OL.item_no, oh.ship_via_cd, BL.ship_via_cd, pp.ParcelType, OL.loc, pp.TrackingNo, pp.weight, pp.ship_dt, 
                OH.cmt_3, pp.Pallet, pp.Carton_UCC128, pp.Pallet_UCC128, OH.cmt_1, OH.inv_dt
 UNION ALL
@@ -64,9 +66,9 @@ FROM  [001].dbo.wsPikPak pp INNER JOIN
                oeordhdr_sql OH ON OH.ord_no = ol.ord_no INNER JOIN
                [001].dbo.wsShipment ws ON ws.shipment = pp.shipment LEFT OUTER JOIN
                [001].dbo.oebolfil_sql BL ON BL.bol_no = ws.bol_no
-WHERE --Test
+WHERE  --Test
 	   --OH.ord_no = '  703650' and
-(CONVERT(varchar, CAST(rtrim(pp.ship_dt) AS datetime), 101) > DATEADD(day, - 98, GETDATE())) AND pp.Shipped = 'Y' AND qty_to_ship > 0 AND 
+(CONVERT(varchar, CAST(rtrim(pp.ship_dt) AS datetime), 101) > DATEADD(day, - 35, GETDATE())) AND pp.Shipped = 'Y' AND qty_to_ship > 0 AND 
                NOT ((OH.ord_no + OL.item_no) IN
                    (SELECT OH.ord_no + item_no
                     FROM   oehdrhst_sql OH JOIN

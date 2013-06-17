@@ -15,8 +15,7 @@ BEGIN
 	  --From wssettings_sql
 	  --Where wssettings_sql.SettingGroup = 'PikPak' And wssettings_sql.SettingName ='NextTruck'
   
-	  --SELECT @NextBOLNo = Right(Replicate(' ', 8) + Convert(varchar,MAX(Convert(int,bol_no)) + 1), 8)
-      --From wsShipment
+	SELECT @NextBOLNo = Right(Replicate(' ', 8) + @NextBOLNo, 8)
 	
   --Next, create the entry in wsshipment
 	insert into wsshipment
@@ -25,8 +24,11 @@ BEGIN
 	(substring(space(30)+@txtShipment,len(space(30)+@txtShipment)-29,30),'',getdate(),@NextBolNo,'')
 	
   --Last, update the control tables with next in line BOL and Shipment
+	--Added to test BOLNo write back:--------------------------------------
+	INSERT INTO [BG_BACKUP].dbo.DevTesting	VALUES  (@NextBOLNo,@txtShipment,@NextBOLNo+1,NULL)	
+	-----------------------------------------------------------------------
 	Update oectlfil_sql set next_bol_no = @NextBOLNo + 1
-	Update wssettings_sql set longvalue = longvalue + 1 where settinggroup = 'PikPak' and settingname = 'NextTruck'
+	Update wssettings_sql set longvalue = @txtShipment + 1 where settinggroup = 'PikPak' and settingname = 'NextTruck'
 	        
 	If @@error <> 0 Begin
 		Rollback Transaction

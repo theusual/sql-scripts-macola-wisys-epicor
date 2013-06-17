@@ -1,9 +1,9 @@
 --ALTER VIEW BG_WMPO AS
 
 --Created:	4/27/10			     By:	BG
---Last Updated:	04/24/13	     By:	BG
+--Last Updated:	06/13/13	     By:	BG
 --Purpose:	View for WM PO tracking
---Last changes: 1) Added qty_to_ship > 0 to where clause in shipping acknowledgements, and added temp table that calc's a sum of qty shipped per item per load # and puts that info in the qty shipped column
+--Last changes: 1A)  Added old PO Num  1) Added qty_to_ship > 0 to where clause in shipping acknowledgements, and added temp table that calc's a sum of qty shipped per item per load # and puts that info in the qty shipped column
 
 
 /***********************************************************************/
@@ -86,8 +86,7 @@ WHERE ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000') AND OH.oe_po_no > 
                     WHERE qty_to_ship > 0)) 
                   --Exclude split shipment orders
                   AND (OH.ord_no + OL.item_no) NOT IN ('  680261BAK-695 OBV-097', '  680102BAK-ARTBRDE 97', 
-               '  680261OBP-1822BSOBV97', '  680524MDWM-0015 SB', '  680524MDWM-0002 SB', '  680524MDWM-0003 SB', '  680524MDWM-0001 SB', '  681451BAK-707 C OBV97', 
-               '  681451BAK-707EC OBV97', '  680451BAK-ARTBRDE 97', '  681591BAK-707EC OBV97', '  832531BAK-ARTBRDE 97')
+               '  680261OBP-1822BSOBV97', '  680524MDWM-0015 SB', '  680524MDWM-0002 SB', '  680524MDWM-0003 SB', '  680524MDWM-0001 SB', '  681451BAK-707 C OBV97', '  681451BAK-707EC OBV97', '  680451BAK-ARTBRDE 97', '  681591BAK-707EC OBV97', '  832531BAK-ARTBRDE 97')
                   --Exclude CR
                   AND (OL.prod_cat NOT IN ('2', '036', '037','102','336') OR LTRIM(OH.ord_no) IN ('697190','695496','696754','696650','695878','695530','696173','696547','696924','697354','695686','696661','696046','692044','695535','696809',' 695736','695632','695490','696480','696456','696370','697823','691111','697064','692430','696045','695110','696856','695633'))
                --Line added 3/6/13: Exclude line items with a qty to ship of 0
@@ -200,15 +199,15 @@ WHERE ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000')
                --Line added 3/6/13: Exclude line items with a qty to ship of 0
                -- AND qty_to_ship > 0
                --Exclude fucked up orders with duplicate line numbers
-               AND NOT (OH.ord_no = '  701266' AND OL.id = '683182')              
+               AND NOT (OH.ord_no = '  701266' AND OL.id = '683182')             
                --Exclude CR
                   AND (OL.prod_cat NOT IN ('2', '036', '037','102','336') OR LTRIM(OH.ord_no) IN ('697190','695496','696754','696650','695878','695530','696173','696547','696924','697354','695686','696661','696046','692044','695535','696809',' 695736','695632','695490','696480','696456','696370','697823','691111','697064','692430','696045','695110','696856','695633'))
                --Test Order
-               --AND OH.ord_no = '  703477'
+               --AND OH.ord_no = '  833357'
                --Exclude bad shipments that have to be manually fixed
                --AND ((OH.ord_no + RTRIM(OL.item_no)) NOT IN ('  701911OBP-BAN008OBV97'))
                --Add older orders
-               OR OH.oe_po_no IN ('31772580')
+               OR OH.oe_po_no IN ('31971720' , '31951116', '31772580', '31994422')
 GROUP BY OH.ord_no, oe_po_no, OH.cus_alt_adr_cd, OL.promise_dt, OH.shipping_dt, SH.ship_dt, OH.cus_no, OH.ship_to_addr_2, OH.ship_to_addr_4, OH.ship_via_cd, OH.ship_via_cd, XX.code, SH.tracking_no, SH.[Pallet/Carton ID], SH.ID, OL.item_desc_1, OL.item_no, SH.Qty, OL.qty_to_ship, OH.ship_to_name, ShpSum.Qty
 
 /***********************************************************************/
