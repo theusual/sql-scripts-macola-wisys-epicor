@@ -1,9 +1,9 @@
 --ALTER VIEW BG_WMPO AS
 
 --Created:	4/27/10			     By:	BG
---Last Updated:	06/13/13	     By:	BG
+--Last Updated:	06/17/13	     By:	BG
 --Purpose:	View for WM PO tracking
---Last changes: 1A)  Added old PO Num  1) Added qty_to_ship > 0 to where clause in shipping acknowledgements, and added temp table that calc's a sum of qty shipped per item per load # and puts that info in the qty shipped column
+--Last changes: 0) Added completely fake line script at bottom  1a)  Added old PO Num  1) Added qty_to_ship > 0 to where clause in shipping acknowledgements, and added temp table that calc's a sum of qty shipped per item per load # and puts that info in the qty shipped column
 
 
 /***********************************************************************/
@@ -176,9 +176,9 @@ FROM  OELINHST_SQL OL  WITH (NOLOCK) INNER JOIN
 				   GROUP BY line_no, item_no, tracking_no, ord_no) AS ShpSum ON ShpSum.line_no = SH.line_no  
 						AND ShpSum.ord_no = SH.ord_no AND ShpSum.tracking_no = SH.tracking_no
 			  
-WHERE ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000') 
-				AND OH.oe_po_no > '0' AND OH.ord_type = 'O' 
-				AND NOT OL.item_no IN ('ADD ON', 'BACKORDER', 'CAP EX', 'FIXTURE REQUEST', 'INITIAL DIV 01', 'INITIAL RM', 'INITIAL SC', 'INITIAL WNM', 'PROTOTYPE METAL', 'PROTOTYPE PLASTIC', 'PROTOTYPE WOOD','REVIEW ITEM', 'SAMPLE') 
+WHERE (        ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000') 
+			   AND OH.oe_po_no > '0' AND OH.ord_type = 'O' 
+			   AND NOT OL.item_no IN ('ADD ON', 'BACKORDER', 'CAP EX', 'FIXTURE REQUEST', 'INITIAL DIV 01', 'INITIAL RM', 'INITIAL SC', 'INITIAL WNM', 'PROTOTYPE METAL', 'PROTOTYPE PLASTIC', 'PROTOTYPE WOOD','REVIEW ITEM', 'SAMPLE') 
 	     	   AND OH.oe_po_no IS NOT NULL 
 	     	   AND NOT OH.cus_alt_adr_cd IS NULL 
 	     	   AND NOT OH.ship_to_addr_2 LIKE 'PO BOX%'  
@@ -201,13 +201,13 @@ WHERE ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000')
                --Exclude fucked up orders with duplicate line numbers
                AND NOT (OH.ord_no = '  701266' AND OL.id = '683182')             
                --Exclude CR
-                  AND (OL.prod_cat NOT IN ('2', '036', '037','102','336') OR LTRIM(OH.ord_no) IN ('697190','695496','696754','696650','695878','695530','696173','696547','696924','697354','695686','696661','696046','692044','695535','696809',' 695736','695632','695490','696480','696456','696370','697823','691111','697064','692430','696045','695110','696856','695633'))
+               AND (OL.prod_cat NOT IN ('2', '036', '037','102','336') OR LTRIM(OH.ord_no) IN ('697190','695496','696754','696650','695878','695530','696173','696547','696924','697354','695686','696661','696046','692044','695535','696809',' 695736','695632','695490','696480','696456','696370','697823','691111','697064','692430','696045','695110','696856','695633'))
                --Test Order
                --AND OH.ord_no = '  833357'
                --Exclude bad shipments that have to be manually fixed
                --AND ((OH.ord_no + RTRIM(OL.item_no)) NOT IN ('  701911OBP-BAN008OBV97'))
                --Add older orders
-               OR OH.oe_po_no IN ('31971720' , '31951116', '31772580', '31994422')
+               ) OR OH.oe_po_no IN ('31971720' , '31951116', '31772580', '31994422')
 GROUP BY OH.ord_no, oe_po_no, OH.cus_alt_adr_cd, OL.promise_dt, OH.shipping_dt, SH.ship_dt, OH.cus_no, OH.ship_to_addr_2, OH.ship_to_addr_4, OH.ship_via_cd, OH.ship_via_cd, XX.code, SH.tracking_no, SH.[Pallet/Carton ID], SH.ID, OL.item_desc_1, OL.item_no, SH.Qty, OL.qty_to_ship, OH.ship_to_name, ShpSum.Qty
 
 /***********************************************************************/
@@ -337,3 +337,7 @@ WHERE ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000') AND OH.oe_po_no > 
                AND OH.oe_po_no IS NOT NULL AND NOT OH.cus_alt_adr_cd IS NULL AND NOT OH.ship_to_addr_2 LIKE 'PO BOX%' AND 
                NOT shipping_dt IS NULL AND OH.ship_to_addr_4 LIKE '%,%' AND isnumeric(cus_alt_adr_cd) = 1 
                AND isnumeric(oe_po_no) = 1 AND qty_to_ship > 0 AND ((OH.ord_no + OL.item_no) IN ('') OR OH.ord_no = '  ')
+UNION ALL
+--Totally fake item, never was shipped, but we are acknowledging it to get it off of the report
+SELECT '838115'	,'31756973'	,'5337'	,'701579'	,'1/26/2013'	,'1/26/2013'	,'1/29/2013'	,'CW'	,'951 TOWN EAST BLVD'                      	,'MESQUITE'	,'TX'	,'TRN'    ,'1261343'	,'701579',	'838115F009234210',	'PALLET',	'', '1',	'100047072',	'BW-WALLSTEP','STEP WALL FLORAL DEPT 84 208 PROTO','','','', '1'	,'1','C','','I'
+

@@ -1,5 +1,5 @@
 DECLARE @tableID AS VARCHAR(MAX)
-SET @tableID = 'InvcHead'
+SET @tableID = 'APInvHed'
 
 SELECT * FROM zKey WHERE datatableID = @tableID --Key list for all tables
 SELECT * FROM zKeyField  WHERE datatableID = @tableID --List of all fields that make up a key for various relations with other tables

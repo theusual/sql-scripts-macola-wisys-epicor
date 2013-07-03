@@ -1,9 +1,9 @@
-ALTER Proc [dbo].[BG_Brysys_OE_Line_UpdateQty] (@OrdType AS CHAR(1) = 'O', @LineNo smallint, @OrdNo VARCHAR(8),  @QtyOrdered DECIMAL(8,2) = null, @QtyToShip DECIMAL(8,2), @UserName AS VARCHAR(30), @Comment1 AS VARCHAR(30), @Comment2 AS VARCHAR(30) = 'OE-LineUpdate') AS
+ALTER Proc [dbo].[BG_Brysys_OE_Line_UpdateQty] (@OrdType AS CHAR(1) = 'O', @LineNo smallint, @OrdNo VARCHAR(8),  @QtyOrdered DECIMAL(8,2) = null, @QtyToShip DECIMAL(8,2), @UserName AS VARCHAR(30), @Comment1 AS VARCHAR(MAX), @Comment2 AS VARCHAR(MAX) = 'OE-LineUpdate') AS
 
 --Created:	4/29/13		 By:	BG
---Last Updated:	5/6/13	 By:	BG
+--Last Updated:	6/18/13	 By:	BG
 --Purpose:	For use with Wisys and Brysys.  Update qty_ordered and qty_to_ship on the line item of a sales order. Affects the following tables:  1) Update 'A' entry in iminvtrx_Sql  2) Update line in imordbld_sql  3) Update oeordlin_sql 4) Update oeordhdr_sql order totals
---Last changes: --
+--Last changes: 6/18/13: ltrimmed all ord_no's and set @OrdNo to trimmed 
 
 -------------------------------------------------------------------------------------------------------
 --NOTES: 
@@ -24,11 +24,14 @@ DECLARE @Item AS VARCHAR(30)
 DECLARE @loc AS VARCHAR(3)
 DECLARE @OldQty AS DECIMAL(8,2)
 
-----------------------
---Exception handling
-----------------------
+-----------------------------------------
+--Preliminary validation
+-----------------------------------------
+--Trim OrdNo
+SET @OrdNo = LTRIM(@OrdNo)
+
 --Verify order exists
-IF NOT EXISTS(SELECT ord_no FROM dbo.oeordhdr_sql WITH (NOLOCK) WHERE ord_no = @OrdNo)
+IF NOT EXISTS(SELECT LTRIM(ord_no) FROM dbo.oeordhdr_sql WITH (NOLOCK) WHERE LTRIM(ord_no) = @OrdNo)
 	BEGIN
 	SET @error = 'Validation Error: Order #' + @OrdNo + ' does not exist.  No action taken.'
 		RAISERROR (
@@ -39,7 +42,7 @@ IF NOT EXISTS(SELECT ord_no FROM dbo.oeordhdr_sql WITH (NOLOCK) WHERE ord_no = @
 	END
 	
 --Verify line on order exists
-IF NOT EXISTS(SELECT ord_no FROM dbo.oeordlin_sql WITH (NOLOCK) WHERE LTRIM(line_no) = LTRIM(@LineNo) AND ord_no = @OrdNo)
+IF NOT EXISTS(SELECT LTRIM(ord_no) FROM dbo.oeordlin_sql WITH (NOLOCK) WHERE LTRIM(line_no) = LTRIM(@LineNo) AND LTRIM(ord_no) = @OrdNo)
 	BEGIN
 	SET @error = 'Validation Error: Line #' + CAST(@LineNo AS VARCHAR) + ' does not exist on order ' + @OrdNo + '.  No action taken.'
 		RAISERROR (
@@ -54,7 +57,7 @@ IF NOT EXISTS(SELECT ord_no FROM dbo.oeordlin_sql WITH (NOLOCK) WHERE LTRIM(line
 -----------------------
 SELECT @Item = item_no,  @OldQty=qty_ordered, @loc = loc
 FROM dbo.oeordlin_sql WITH (NOLOCK)
-WHERE LTRIM(line_no) = LTRIM(@LineNo) AND ord_no = @OrdNo
+WHERE LTRIM(line_no) = LTRIM(@LineNo) AND LTRIM(ord_no) = @OrdNo
 
 --If no QtyOrdered is given, then assume that qty ordered stays the same and is not changed
 IF(@QtyOrdered IS NULL)
@@ -72,15 +75,15 @@ SELECT @source = 'O', @ctl_no = '        ', @line_no = @LineNo, @lev_no = 1, @SE
 
 --NOTE: Update "A" entry associated with that line (lev_no = 1)
 UPDATE [IMINVTRX_SQL] 
-SET quantity = @QtyToShip, amt = (quantity * (SELECT unit_cost FROM dbo.iminvtrx_sql WHERE [source] = @source AND ord_no = @OrdNo AND ctl_no = @CTL_NO AND line_no = @line_no AND lev_no = @lev_no AND seq_no = @seq_no))
-WHERE [source] = @source AND ord_no = @OrdNo AND ctl_no = @CTL_NO AND line_no = @line_no AND lev_no = @lev_no
+SET quantity = @QtyToShip, amt = (quantity * (SELECT unit_cost FROM dbo.iminvtrx_sql WHERE [source] = @source AND LTRIM(ord_no) = @OrdNo AND ctl_no = @CTL_NO AND line_no = @line_no AND lev_no = @lev_no AND seq_no = @seq_no))
+WHERE [source] = @source AND LTRIM(ord_no) = @OrdNo AND ctl_no = @CTL_NO AND line_no = @line_no AND lev_no = @lev_no
 
 --------------------------------------
 --IMORDBLD Update --------------------
 --------------------------------------
 UPDATE IMORDBLD_SQL
 SET qty=@QtyOrdered,qty_to_ship=@QtyToShip
-WHERE (ORD_TYPE = @OrdType AND ord_no = @OrdNo AND ctl_no = @CTL_NO AND line_no = @line_no)
+WHERE (ORD_TYPE = @OrdType AND LTRIM(ord_no) = @OrdNo AND ctl_no = @CTL_NO AND line_no = @line_no)
 
 --------------------------------------
 --OEORDLIN Update --------------------
@@ -88,7 +91,7 @@ WHERE (ORD_TYPE = @OrdType AND ord_no = @OrdNo AND ctl_no = @CTL_NO AND line_no 
 
 UPDATE OEORDLIN_SQL
 SET qty_ordered = @QtyOrdered, qty_to_ship = @QtyToShip, qty_allocated = @QtyToShip, tot_qty_ordered=@QtyOrdered
-WHERE ORD_TYPE = @OrdType AND ORD_NO = @OrdNo  AND LINE_NO = @LineNo
+WHERE ORD_TYPE = @OrdType AND LTRIM(ord_no) = @OrdNo  AND LINE_NO = @LineNo
 
 --------------------------------------
 --IMINVLOC Update --------------------
@@ -106,7 +109,7 @@ WHERE loc = @loc AND item_no = @Item
 /*
 UPDATE OEORDHDR_SQL
 SET accum_tot_sls_amt = 
-WHERE ORD_TYPE = @source AND ORD_NO = @OrdNo
+WHERE ORD_TYPE = @source AND LTRIM(ord_no) = @OrdNo
 */
 
 --------------------------------------------------------------------
@@ -116,7 +119,7 @@ WHERE ORD_TYPE = @source AND ORD_NO = @OrdNo
 /*
 UPDATE OEPDSHDR_SQL
 SET 
-WHERE ORD_TYPE = @source AND ORD_NO = @OrdNo
+WHERE ORD_TYPE = @source AND LTRIM(ord_no) = @OrdNo
 */
 
 --------------------------------------------------------------------
@@ -125,7 +128,7 @@ WHERE ORD_TYPE = @source AND ORD_NO = @OrdNo
 --TODO:
 /*
 DELETE FROM OEINQORD_SQL
-WHERE ORD_TYPE = @source AND ORD_NO = @OrdNo
+WHERE ORD_TYPE = @source AND LTRIM(ord_no) = @OrdNo
 */
 
 

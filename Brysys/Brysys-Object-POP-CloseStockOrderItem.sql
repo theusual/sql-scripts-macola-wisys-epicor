@@ -2,9 +2,9 @@ ALTER Proc [dbo].[BG_Brysys_POP_CloseStockOrderItem] (@LineNo smallint, @OrdNo v
 @ParentQty AS DECIMAL(8,2), @UserName AS VARCHAR(30), @Comment1 AS VARCHAR(30) = NULL, @CloseDt AS DATETIME = NULL, @RESULT AS VARCHAR(MAX) OUTPUT) AS
 
 --Created:	4/23/13	 By:	BG
---Last Updated:	5/3/13	 By:	BG
+--Last Updated:	6/18/13	 By:	BG
 --Purpose:	For use with Wisys and Brysys.  Close a stock order item using the following steps: 1)Issue components of the stock order item, if any.   2) Receive in the given quantity of the stock order item.   3) Delete the line item from the stock order.  4) If no more lines on stock order, delete the stock order header as well.  5) Log any deletions with enough detail to undo any deletions
---Last changes: --
+--Last changes: 6/18/13: ltrimmed all ord_no's and set @OrdNo to trimmed
 
 -------------------------------------------------------------------------------------------------------
 --NOTES: 
@@ -30,8 +30,11 @@ DECLARE @Action VARCHAR(MAX)
 -----------------------------------------
 --Preliminary validation
 -----------------------------------------
+--Trim OrdNo
+SET @OrdNo = LTRIM(@OrdNo)
+
 --Verify order and line exist
-IF NOT EXISTS(SELECT ord_no FROM dbo.oeordlin_sql WITH (NOLOCK) WHERE LTRIM(line_no) = LTRIM(@LineNo) AND ord_no = @OrdNo)
+IF NOT EXISTS(SELECT LTRIM(ord_no) FROM dbo.oeordlin_sql WITH (NOLOCK) WHERE LTRIM(line_no) = LTRIM(@LineNo) AND LTRIM(ord_no) = @OrdNo)
 	BEGIN
 	SET @error = 'ERROR: Line #' + CAST(@LineNo AS VARCHAR) + ' does not exist on order ' + @OrdNo + '.  No action taken.'
 		RAISERROR (@error, -- Message text.
@@ -53,7 +56,7 @@ IF @ParentQty <= 0
 ------------------------------------------
 --Set Object Variables	
 ------------------------------------------
-SELECT @LineQty = qty_to_ship, @InvLoc = loc, @ParentItem = item_no FROM dbo.oeordlin_sql WHERE line_no = @LineNo AND ord_no = @OrdNo
+SELECT @LineQty = qty_to_ship, @InvLoc = loc, @ParentItem = item_no FROM dbo.oeordlin_sql WHERE line_no = @LineNo AND LTRIM(ord_no) = @OrdNo
 SET @NewQty = (@LineQty - @ParentQty)
 SET @Comment2 = ('From stock order #'+@OrdNo)
 
@@ -149,7 +152,7 @@ IF (@ParentQty >= @LineQty)
 		PRINT '...'
 	END
 --NOTE: IF last line deleted then stock order header is deleted automatically by the delete line item object
-IF ((SELECT COUNT(*) FROM dbo.oeordlin_sql WHERE ord_no = @OrdNo) = 0)
+IF ((SELECT COUNT(*) FROM dbo.oeordlin_sql WHERE LTRIM(ord_no) = @OrdNo) = 0)
 	BEGIN
 		SET @Action = @Action + ', ORDER DELETED'
 		PRINT 'ORDER DELETED'

@@ -1,14 +1,12 @@
 --Queries for fixing hung up invoices that will not post or print
 -----------------------------------------------------------------
 
-SELECT inv_batch_id, selection_cd, inv_dt, inv_no, status, * FROM oeordhdr_SQL OH WHERE ord_no = '  221059'
-
-SELECT inv_batch_id, * FROM dbo.oeordhdr_sql WHERE ord_no = '  221059'
-
-SELECT inv_batch_id, * FROM dbo.oehdrhst_sql WHERE ord_no = '  221059'
+SELECT inv_batch_id, selection_cd, inv_dt, inv_no, status, * FROM oeordhdr_SQL OH WHERE ord_no = '  708168'
 
 --Compare the hung up invoices with a new invoice to see which fields need to be reset to starting status
-SELECT orig_ord_type, [status], inv_batch_id, selection_cd, inv_Dt, inv_no, * FROM oeordhdr_Sql OH LEFT OUTER JOIN oeordlin_Sql OL ON OH.ord_no = OL.ord_no WHERE OH.inv_batch_id = '12/13 DM'
+SELECT orig_ord_type, [status], inv_batch_id, selection_cd, inv_Dt, inv_no, * 
+FROM oeordhdr_Sql OH LEFT OUTER JOIN oeordlin_Sql OL ON OH.ord_no = OL.ord_no
+WHERE OH.inv_batch_id = 'VL 6/12'
 
 --Check if invoice is in power inquiry tables, if it is remove the entries with an invoice # (entries w/o invoice # are normal open order entries)
 SELECT * FROM oepdshdr_sql WHERE ord_no IN (SELECT ord_no FROM oeordhdr_SQL OH WHERE OH.inv_batch_id = '12/13 DM') AND invoice_no != ''

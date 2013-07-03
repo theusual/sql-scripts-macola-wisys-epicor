@@ -1,9 +1,10 @@
 ALTER Proc [dbo].[BG_Brysys_InvTrx_IssueBOM] (@ParentItem varchar(30), @InvLoc varchar(3), @ParentQty AS DECIMAL(8,2), @UserName AS VARCHAR(30), @Comment1 AS VARCHAR(30) = null, @Comment2 AS VARCHAR(30) = NULL, @OrdNo char(8) = null) AS
 
 --Created:	4/22/13	 By:	BG
---Last Updated:	5/15/13	 By:	BG
+--Last Updated:	6/18/13	 By:	BG
 --Purpose:	For use with Wisys and Brysys.  Issue all components found for an item, multiplied by the quantity of parents being created.
---Last changes: Changed input parameter order to put optional paramters at end
+--Last changes: 6/18/13: ltrimmed all ord_no's and set @OrdNo to trimmed 
+--				5/15/13: Changed input parameter order to put optional paramters at end
 
 -------------------------------------------------------------------------------------------------------
 --NOTES: 
@@ -15,9 +16,11 @@ BEGIN TRY
 
 DECLARE @error VARCHAR(500)
 
-----------------------
---Exception handling
-----------------------
+-----------------------------------------
+--Preliminary validation
+-----------------------------------------
+--Trim OrdNo
+SET @OrdNo = LTRIM(@OrdNo)
 
 --Verify item contains BOMs
 IF NOT EXISTS(SELECT item_no FROM dbo.bmprdstr_sql WITH (NOLOCK) WHERE LTRIM(item_no) = LTRIM(@ParentItem))
@@ -65,7 +68,7 @@ SELECT
 	@deall_amt=0,@filler_0004=NULL
 	
 --Pull last used IM control number for use in inserting the ord_no variable
-SET @ord_no = (select next_doc_no from IMCTLFIL_SQL where im_ctl_key_1 = 1)
+SET @ord_no = (select LTRIM(next_doc_no) from IMCTLFIL_SQL where im_ctl_key_1 = 1)
 
 --Update IM control file with the next document number
 UPDATE dbo.imctlfil_sql
