@@ -1,9 +1,9 @@
 --ALTER VIEW BG_WMPO AS
 
 --Created:	4/27/10			     By:	BG
---Last Updated:	06/17/13	     By:	BG
+--Last Updated:	07/29/13	     By:	BG
 --Purpose:	View for WM PO tracking
---Last changes: 0) Added completely fake line script at bottom  1a)  Added old PO Num  1) Added qty_to_ship > 0 to where clause in shipping acknowledgements, and added temp table that calc's a sum of qty shipped per item per load # and puts that info in the qty shipped column
+--Last changes: 0) Added completely fake line script at bottom  1a)  Added old PO Num  1) Added qty_to_ship > 0 to where clause in shipping acknowledgements, and added temp table that calc's a sum of qty shipped per item per load # and puts that info in the qty shipped column 2) Fixed ship_instruction_1 in where clause to include NULL values
 
 
 /***********************************************************************/
@@ -76,7 +76,7 @@ WHERE ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000') AND OH.oe_po_no > 
                AND isnumeric(cus_alt_adr_cd) = 1 
                AND isnumeric(oe_po_no) = 1 
                AND qty_to_ship > 0 
-               AND NOT(OH.ship_instruction_1 LIKE '%REPLA%')
+               AND (NOT(OH.ship_instruction_1 LIKE '%REPLA%') OR OH.ship_instruction_1 IS NULL)
                AND (NOT(OH.user_def_Fld_3 LIKE '%RP%') OR OH.user_def_fld_3 IS NULL)
                AND (NOT(OH.user_def_Fld_4 LIKE '%RP%') OR OH.user_def_fld_4 IS NULL)
                AND NOT ((OH.ord_no + OL.item_no) IN
@@ -147,7 +147,7 @@ UNION ALL
                AS 'Supplier Quantity Ordered', 
                'Supplier Quantity Shipped' = 
                CASE WHEN OH.ord_no = '  701736' THEN '0'
-                    ELSE cast(ShpSum.qty AS int)
+                    ELSE cast(ShpSumTot.qty AS int)
                END, 
                CASE WHEN OH.ord_no+OL.item_no IN 
 							(SELECT ord_no+item_no  FROM oeordlin_Sql) 
@@ -156,59 +156,64 @@ UNION ALL
                END AS 'Status', 
                '' AS 'Ship Condition', 'I' AS 'Part Type'
 FROM  OELINHST_SQL OL  WITH (NOLOCK) INNER JOIN 
-               OEHDRHST_SQL OH WITH (NOLOCK) ON OL.inv_no = OH.inv_no 
-               JOIN  BG_SHIPPED SH WITH (NOLOCK) ON ltrim(OL.ord_no) = ltrim(SH.ord_no) AND OL.line_no = SH.line_no 
-                --Join Below Added On 3/6/13:  Adds view to sum TOTAL qty shipped per ORDER for the A/C column
-                --Join Below Removed on 3/7/13:  Making query run too long
-               /*LEFT OUTER JOIN
-                 (SELECT BG.ord_no, BG.item_no, BG.line_no, SUM(BG.qty) AS qty
-				  FROM dbo.BG_SHIPPED BG  WITH (NOLOCK)
-				  GROUP BY BG.ord_no, BG.line_no, BG.item_no) AS ShpSumTot ON ShpSumTot.line_no = OL.line_no  
-				           AND ShpSumTot.ord_no = OL.ord_no*/
-               LEFT OUTER JOIN OECUSITM_SQL CI WITH (NOLOCK) ON OL.item_no = CI.item_no AND OH.cus_no = CI.cus_no 
-               LEFT OUTER JOIN EDCSHVFL_SQL XX WITH (NOLOCK) ON SH.carrier_cd = XX.mac_ship_via 
-               --LEFT OUTER JOIN imitmidx_sql IM WITH (NOLOCK) ON OL.item_no = IM.item_no 
-               --Join Below Added On 3/6/13:  Adds view to sum qty shipped per load/tracking # for the qty shipped column
-               
-               LEFT OUTER JOIN
-				   (SELECT ord_no, item_no, line_no, SUM(qty) AS qty, tracking_no 
-				   FROM dbo.BG_SHIPPED WITH (NOLOCK)
-				   GROUP BY line_no, item_no, tracking_no, ord_no) AS ShpSum ON ShpSum.line_no = SH.line_no  
-						AND ShpSum.ord_no = SH.ord_no AND ShpSum.tracking_no = SH.tracking_no
-			  
-WHERE (        ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000') 
-			   AND OH.oe_po_no > '0' AND OH.ord_type = 'O' 
-			   AND NOT OL.item_no IN ('ADD ON', 'BACKORDER', 'CAP EX', 'FIXTURE REQUEST', 'INITIAL DIV 01', 'INITIAL RM', 'INITIAL SC', 'INITIAL WNM', 'PROTOTYPE METAL', 'PROTOTYPE PLASTIC', 'PROTOTYPE WOOD','REVIEW ITEM', 'SAMPLE') 
-	     	   AND OH.oe_po_no IS NOT NULL 
-	     	   AND NOT OH.cus_alt_adr_cd IS NULL 
-	     	   AND NOT OH.ship_to_addr_2 LIKE 'PO BOX%'  
-               AND NOT shipping_dt IS NULL 
-               AND OH.ship_to_addr_4 LIKE '%,%' 
-               --AND isnumeric(cus_alt_adr_cd) = 1 
-               AND isnumeric(oe_po_no) = 1 
-               AND qty_to_ship > 0
-               AND NOT(OH.ship_instruction_1 LIKE '%REPLA%')
-               AND (NOT(OH.user_def_Fld_3 LIKE '%RP%') OR OH.user_def_fld_3 IS NULL)
-               AND (NOT(OH.user_def_Fld_4 LIKE '%RP%') OR OH.user_def_fld_4 IS NULL)
-               --Exclude split shipment orders
-               AND (OH.ord_no + OL.item_no) NOT IN ('  680261BAK-695 OBV-097', '  680102BAK-ARTBRDE 97', 
-               '  680261OBP-1822BSOBV97', '  680524MDWM-0015 SB', '  680524MDWM-0002 SB', '  680524MDWM-0003 SB', '  680524MDWM-0001 SB', '  681451BAK-707 C OBV97', 
-               '  681451BAK-707EC OBV97', '  680451BAK-ARTBRDE 97', '  681591BAK-707EC OBV97', '  832531BAK-ARTBRDE 97')
-               --Line added 11/9/11: Exclude orders entered more than 28 days ago
-               AND OH.inv_dt > DATEADD(DAY,-30,GETDATE())
-               --Line added 3/6/13: Exclude line items with a qty to ship of 0
-               -- AND qty_to_ship > 0
-               --Exclude fucked up orders with duplicate line numbers
-               AND NOT (OH.ord_no = '  701266' AND OL.id = '683182')             
-               --Exclude CR
-               AND (OL.prod_cat NOT IN ('2', '036', '037','102','336') OR LTRIM(OH.ord_no) IN ('697190','695496','696754','696650','695878','695530','696173','696547','696924','697354','695686','696661','696046','692044','695535','696809',' 695736','695632','695490','696480','696456','696370','697823','691111','697064','692430','696045','695110','696856','695633'))
-               --Test Order
-               --AND OH.ord_no = '  833357'
-               --Exclude bad shipments that have to be manually fixed
-               --AND ((OH.ord_no + RTRIM(OL.item_no)) NOT IN ('  701911OBP-BAN008OBV97'))
-               --Add older orders
-               ) OR OH.oe_po_no IN ('31971720' , '31951116', '31772580', '31994422')
-GROUP BY OH.ord_no, oe_po_no, OH.cus_alt_adr_cd, OL.promise_dt, OH.shipping_dt, SH.ship_dt, OH.cus_no, OH.ship_to_addr_2, OH.ship_to_addr_4, OH.ship_via_cd, OH.ship_via_cd, XX.code, SH.tracking_no, SH.[Pallet/Carton ID], SH.ID, OL.item_desc_1, OL.item_no, SH.Qty, OL.qty_to_ship, OH.ship_to_name, ShpSum.Qty
+       OEHDRHST_SQL OH WITH (NOLOCK) ON OL.inv_no = OH.inv_no 
+       JOIN  BG_SHIPPED SH WITH (NOLOCK) ON ltrim(OL.ord_no) = ltrim(SH.ord_no) AND OL.line_no = SH.line_no 
+        --Join Below Added On 3/6/13:  Adds view to sum TOTAL qty shipped per ORDER for the A/C column
+        --Join Below Removed on 3/7/13:  Making query run too long
+       /*LEFT OUTER JOIN
+         (SELECT BG.ord_no, BG.item_no, BG.line_no, SUM(BG.qty) AS qty
+		  FROM dbo.BG_SHIPPED BG  WITH (NOLOCK)
+		  GROUP BY BG.ord_no, BG.line_no, BG.item_no) AS ShpSumTot ON ShpSumTot.line_no = OL.line_no  
+		           AND ShpSumTot.ord_no = OL.ord_no*/
+       LEFT OUTER JOIN OECUSITM_SQL CI WITH (NOLOCK) ON OL.item_no = CI.item_no AND OH.cus_no = CI.cus_no 
+       LEFT OUTER JOIN EDCSHVFL_SQL XX WITH (NOLOCK) ON SH.carrier_cd = XX.mac_ship_via 
+       --LEFT OUTER JOIN imitmidx_sql IM WITH (NOLOCK) ON OL.item_no = IM.item_no 
+       --Join Below Added On 3/6/13:  Adds view to sum qty shipped per load/tracking # for the qty shipped column
+       LEFT OUTER JOIN
+		   (SELECT ord_no, item_no, line_no, SUM(qty) AS qty, tracking_no 
+		   FROM dbo.BG_SHIPPED WITH (NOLOCK)
+		   GROUP BY line_no, item_no, tracking_no, ord_no) AS ShpSum ON ShpSum.line_no = SH.line_no  
+				AND ShpSum.ord_no = SH.ord_no AND ShpSum.tracking_no = SH.tracking_no
+	  --Join Below Added On 8/1/13:  Adds view to sum total qty shipped per item # for the total qty shipped column
+	   LEFT OUTER JOIN
+		   (SELECT LTRIM(ord_no) AS ord_no, item_no, SUM(qty) AS qty 
+			FROM wspikpak WITH (NOLOCK)
+			GROUP BY item_no, ord_no) AS ShpSumTot ON ShpSumTot.item_no = SH.item_no  
+				AND ShpSumTot.ord_no = SH.ord_no 
+WHERE (ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000') 
+	   AND OH.oe_po_no > '0' AND OH.ord_type = 'O' 
+	   AND NOT OL.item_no IN ('ADD ON', 'BACKORDER', 'CAP EX', 'FIXTURE REQUEST', 'INITIAL DIV 01', 'INITIAL RM', 'INITIAL SC', 
+	   'INITIAL WNM', 'PROTOTYPE METAL', 'PROTOTYPE PLASTIC', 'PROTOTYPE WOOD','REVIEW ITEM', 'SAMPLE') 
+ 	   AND OH.oe_po_no IS NOT NULL 
+ 	   AND NOT OH.cus_alt_adr_cd IS NULL 
+ 	   AND NOT OH.ship_to_addr_2 LIKE 'PO BOX%'  
+       AND NOT shipping_dt IS NULL 
+       AND OH.ship_to_addr_4 LIKE '%,%' 
+       --AND isnumeric(cus_alt_adr_cd) = 1 
+       AND isnumeric(oe_po_no) = 1 
+       AND qty_to_ship > 0
+       AND (NOT(OH.ship_instruction_1 LIKE '%REPLA%') OR OH.ship_instruction_1 IS NULL)
+       AND (NOT(OH.user_def_Fld_3 LIKE '%RP%') OR OH.user_def_fld_3 IS NULL)
+       AND (NOT(OH.user_def_Fld_4 LIKE '%RP%') OR OH.user_def_fld_4 IS NULL)
+       --Exclude split shipment orders
+       AND (OH.ord_no + OL.item_no) NOT IN ('  680261BAK-695 OBV-097', '  680102BAK-ARTBRDE 97', 
+       '  680261OBP-1822BSOBV97', '  680524MDWM-0015 SB', '  680524MDWM-0002 SB', '  680524MDWM-0003 SB', '  680524MDWM-0001 SB', 
+       '  681451BAK-707 C OBV97', '  681451BAK-707EC OBV97', '  680451BAK-ARTBRDE 97', '  681591BAK-707EC OBV97', '  832531BAK-ARTBRDE 97')
+       --Line added 11/9/11: Exclude orders entered more than 30 days ago
+       AND OH.inv_dt > DATEADD(DAY,-30,GETDATE())
+       --Line added 3/6/13: Exclude line items with a qty to ship of 0
+       -- AND qty_to_ship > 0
+       --Exclude fucked up orders with duplicate line numbers
+       AND NOT (OH.ord_no = '  701266' AND OL.id = '683182')             
+       --Exclude CR
+       AND (OL.prod_cat NOT IN ('2', '036', '037','102','336') OR LTRIM(OH.ord_no) IN ('697190','695496','696754','696650','695878','695530','696173','696547','696924','697354','695686','696661','696046','692044','695535','696809',' 695736','695632','695490','696480','696456','696370','697823','691111','697064','692430','696045','695110','696856','695633'))
+       --Test Order
+       AND OH.ord_no = '  703734'
+       --Exclude bad shipments that have to be manually fixed
+       --AND ((OH.ord_no + RTRIM(OL.item_no)) NOT IN ('  701911OBP-BAN008OBV97'))
+       --Add older orders
+       ) OR OH.oe_po_no IN ('31971720' , '31951116', '31772580', '31994422','31915613','32055458')
+GROUP BY OH.ord_no, oe_po_no, OH.cus_alt_adr_cd, OL.promise_dt, OH.shipping_dt, SH.ship_dt, OH.cus_no, OH.ship_to_addr_2, OH.ship_to_addr_4, OH.ship_via_cd, OH.ship_via_cd, XX.code, SH.tracking_no, SH.[Pallet/Carton ID], SH.ID, OL.item_desc_1, OL.item_no, SH.Qty, OL.qty_to_ship, OH.ship_to_name, ShpSumTot.Qty
 
 /***********************************************************************/
 /*Order Acknowledgement*/
@@ -256,12 +261,11 @@ WHERE ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000') AND OH.oe_po_no > 
                'BACKORDER', 'CAP EX', 'FIXTURE REQUEST', 'INITIAL DIV 01', 'INITIAL RM', 'INITIAL SC', 'INITIAL WNM', 'PROTOTYPE METAL', 'PROTOTYPE PLASTIC', 
                'PROTOTYPE WOOD', 'REVIEW ITEM', 'SAMPLE') AND OH.oe_po_no IS NOT NULL AND NOT OH.cus_alt_adr_cd IS NULL AND 
                NOT OH.ship_to_addr_2 LIKE 'PO BOX%' 
-               AND NOT shipping_dt IS NULL 
-               --AND OH.ship_to_addr_4 LIKE '%,%' 
+               AND NOT shipping_dt IS NULL  
                AND LEN(cus_alt_adr_cd) < 11 
-               AND isnumeric(oe_po_no) = 1 
+               AND isnumeric(oe_po_no) = 1
                AND OL.shipped_dt IS NULL 
-               AND NOT(OH.ship_instruction_1 LIKE '%REPLA%')
+               AND (NOT(OH.ship_instruction_1 LIKE '%REPLA%') OR OH.ship_instruction_1 IS NULL)
                AND (NOT(OH.user_def_Fld_3 LIKE '%RP%') OR OH.user_def_fld_3 IS NULL)
                AND (NOT(OH.user_def_Fld_4 LIKE '%RP%') OR OH.user_def_fld_4 IS NULL)
                --Exclude split shipment orders
@@ -269,7 +273,7 @@ WHERE ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000') AND OH.oe_po_no > 
                '  680102BAK-ARTBRDE 97', '  680261OBP-1822BSOBV97', '  680524MDWM-0015 SB', '  680524MDWM-0002 SB', 
                '  680524MDWM-0003 SB', '  680524MDWM-0001 SB', '  832531BAK-ARTBRDE 97') 
                --Test Order
-               --AND OH.ord_no = '  695301'
+               --AND OH.ord_no = '  711531'
                --Line added 11/9/11: Exclude orders entered more than 21 days ago
                --Line removed 2/8/11:  Orders entered more than 21 days ago are necessary to be included in situations of backorders where promise date is updated on the old item
                --AND entered_dt > DATEADD(DAY,-21,GETDATE())

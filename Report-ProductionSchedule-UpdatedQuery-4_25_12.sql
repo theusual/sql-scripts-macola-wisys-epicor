@@ -1,10 +1,11 @@
 --ALTER VIEW Z_OPEN_OPS AS 
 
 --Created:	02/01/11	 By:	AW/SW
---Last Updated:	6/6/12	 By:	BG
+--Last Updated:	7/11/12	 By:	BG
 --Purpose:	View for Production Schedule Report 
 --Last Change:  Added Nolock hint to prevent query from applying locks, trying to reduce blocking from the schedule refreshes
 --Last Change 2:  Change line_seq_no to line_no, excluded IT location, added woodshop QOH
+--Last Change 3:  Added QOH_ALL_LOC, changed QOH to be FW locations only (WS,MS,PS,MDC,NE,GD,IT)
 
 SELECT			DISTINCT CASE    WHEN AUD_DTS.aud_dt_min IS NULL THEN OH.entered_dt 
                         ELSE AUD_DTS.aud_dt_min
@@ -39,7 +40,7 @@ SELECT			DISTINCT CASE    WHEN AUD_DTS.aud_dt_min IS NULL THEN OH.entered_dt
 				--							FROM   bmprdstr_sql)) THEN 'N' 
 				--	ELSE 'Y' 
 				--END AS KIT,
-			'' AS KIT, 
+			   '' AS KIT, 
                CASE WHEN CMT.line_seq_no IS NULL  THEN 'N/A' 
                     ELSE 'See Comments' 
                END AS COMMENTS, 
@@ -75,13 +76,14 @@ SELECT			DISTINCT CASE    WHEN AUD_DTS.aud_dt_min IS NULL THEN OH.entered_dt
                '' AS [LAST MALVERN SHIPPED DATE], 
                OH.ship_via_cd AS [SHIP VIA],
                --,LTRIM(PP.Pallet) AS [PALLET ID #]
-               INV.qty_on_hand AS [QOH],
-               INVWS.qty_on_hand AS [QOH WS]
-               
+               INVFW.qty_on_hand AS [QOH],
+               INVWS.qty_on_hand AS [QOH WS],
+               INV.qty_on_hand AS [QOH_ALL_LOC]
 FROM  dbo.oeordlin_sql  AS OL WITH(NOLOCK)
 			   INNER JOIN dbo.oeordhdr_sql AS OH WITH(NOLOCK) ON OH.ord_no = OL.ord_no  
                INNER JOIN dbo.imitmidx_sql AS IM WITH(NOLOCK) ON OL.item_no = IM.item_no 
                JOIN dbo.Z_IMINVLOC AS INV WITH(NOLOCK) ON INV.item_no = IM.item_no
+               JOIN dbo.Z_IMINVLOC_FW_LOCS AS INVFW WITH(NOLOCK) ON INVFW.item_no = IM.item_no
                JOIN dbo.iminvloc_sql AS INVWS WITH(NOLOCK) ON INVWS.item_no = IM.item_no
                LEFT OUTER JOIN  dbo.bmprdstr_sql AS BM WITH(NOLOCK) ON OL.item_no = BM.item_no 
                LEFT OUTER JOIN  OELINCMT_SQL CMT WITH(NOLOCK) ON CMT.ord_no = OH.ord_no 
@@ -108,4 +110,4 @@ WHERE			(OH.ord_type = 'O')
 				AND (OL.loc NOT IN ('CAN', 'IN','BR','IT'))
 				AND INVWS.loc = 'WS'
 				
-GROUP BY OH.entered_dt, AUD_DTS.aud_dt_min, AUD_LAST.aud_dt, AUD_LAST.aud_action, AUD_LAST.user_name, AUD_DTS.aud_dt_max, OH.mfg_loc, OL.loc, OH.shipping_dt, OH.ord_no, OH.cus_no, OH.ship_to_name, OH.ship_to_addr_2, OH.ship_to_addr_4, OL.qty_ordered, OL.item_no, CMT.line_seq_no, OH.ship_instruction_1, OH.ship_instruction_2, IM.prod_cat, OL.line_no, OL.item_desc_1, OL.item_desc_2, IM.drawing_release_no, IM.drawing_revision_no, BM.qty_per_par, OL.qty_ordered, BM.comp_item_no, BM.seq_no, OL.unit_price, OH.oe_po_no, IM.item_note_3, OH.ord_dt, OL.picked_dt, OL.ord_type, OH.slspsn_no, OH.ship_via_cd, INV.qty_on_hand, INVWS.qty_on_hand--, PP.Pallet
+GROUP BY OH.entered_dt, AUD_DTS.aud_dt_min, AUD_LAST.aud_dt, AUD_LAST.aud_action, AUD_LAST.user_name, AUD_DTS.aud_dt_max, OH.mfg_loc, OL.loc, OH.shipping_dt, OH.ord_no, OH.cus_no, OH.ship_to_name, OH.ship_to_addr_2, OH.ship_to_addr_4, OL.qty_ordered, OL.item_no, CMT.line_seq_no, OH.ship_instruction_1, OH.ship_instruction_2, IM.prod_cat, OL.line_no, OL.item_desc_1, OL.item_desc_2, IM.drawing_release_no, IM.drawing_revision_no, BM.qty_per_par, OL.qty_ordered, BM.comp_item_no, BM.seq_no, OL.unit_price, OH.oe_po_no, IM.item_note_3, OH.ord_dt, OL.picked_dt, OL.ord_type, OH.slspsn_no, OH.ship_via_cd, INV.qty_on_hand, INVWS.qty_on_hand, INVFW.qty_on_hand--,PP.Pallet

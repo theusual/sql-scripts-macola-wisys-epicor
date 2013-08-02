@@ -1,4 +1,4 @@
---ALTER VIEW BG_Inventory_Projections_AllPurchased  AS
+ALTER VIEW BG_Inventory_Projections_AllPurchased  AS
 SELECT DISTINCT TOP 100 PERCENT  Item, ItemDesc1, ItemDesc2, [PO/SLS], [SHP OR RECV DT], [QTY (QOH/QTY SLS/QTY REC)], [PROJ QOH], ORD#, [VEND/CUS], [ORD DT], CONTAINER, [CONT. SHP TO], [XFER TO], [PROD CAT], [CUS#/VEND#], CH, STORE, [PARENT ITEM (ONLY ON SALES)], OrdType2, 
 CASE WHEN ESS IS NULL THEN 0 
 	WHEN ISNUMERIC(ESS) = 0 THEN 0 
@@ -24,8 +24,11 @@ WHERE (IM2.prod_cat NOT IN ('036', '336', '102', '037'))
 	  
 UNION ALL
 --QOH for BOM items that don't pull on the query above
-SELECT  BMIM.item_no AS Item, BMIM.item_desc_1 AS ItemDesc1, BMIM.item_desc_2 AS ItemDesc2, 'QOH' AS [PO/SLS], CONVERT(varchar(10), GETDATE(), 101) AS [SHP OR RECV DT], BMINV.qty_on_hand AS [QTY (QOH/QTY SLS/QTY REC)], '' AS [PROJ QOH], 'QOH' AS ORD#, 'QOH' AS [VEND/CUS], 'QOH' AS [ORD DT],'QOH' AS CONTAINER, 'QOH' AS [CONT. SHP TO], 'QOH' AS [XFER TO], BMIM.prod_cat AS [PROD CAT], NULL AS [CUS#/VEND#], BMIM.item_note_1 AS CH,'QOH' AS STORE, 'QOH' AS [PARENT ITEM (ONLY ON SALES)], BMIM.item_note_4 AS ESS, BMIM.extra_10 AS usage_ytd, 
-'' AS [OrdType2], BMIM.extra_1 AS 'ParentFlag'
+SELECT  BMIM.item_no AS Item, BMIM.item_desc_1 AS ItemDesc1, BMIM.item_desc_2 AS ItemDesc2, 'QOH' AS [PO/SLS], 
+		CONVERT(varchar(10), GETDATE(), 101) AS [SHP OR RECV DT], BMINV.qty_on_hand AS [QTY (QOH/QTY SLS/QTY REC)], '' AS [PROJ QOH], 
+		'QOH' AS ORD#, 'QOH' AS [VEND/CUS], 'QOH' AS [ORD DT],'QOH' AS CONTAINER, 'QOH' AS [CONT. SHP TO], 'QOH' AS [XFER TO], BMIM.prod_cat AS [PROD CAT], 
+		NULL AS [CUS#/VEND#], BMIM.item_note_1 AS CH,'QOH' AS STORE, 'QOH' AS [PARENT ITEM (ONLY ON SALES)], BMIM.item_note_4 AS ESS, 
+		BMIM.extra_10 AS usage_ytd, '' AS [OrdType2], BMIM.extra_1 AS 'ParentFlag'
 FROM  dbo.oeordhdr_sql AS OH INNER JOIN
               dbo.oeordlin_sql AS OL ON OL.ord_no = OH.ord_no INNER JOIN
               dbo.imitmidx_sql AS IM ON IM.item_no = OL.item_no JOIN
@@ -82,7 +85,12 @@ WHERE  (IM2.prod_cat NOT IN ('036', '336', '102', '037'))
 
 UNION ALL
 
-SELECT BM.comp_item_no AS ITEM, BMIM.item_desc_1 AS ItemDesc1, BMIM.item_desc_2 AS ItemDesc2, 'SALE' AS [PO/SLS], CASE WHEN CONVERT(varchar(10), OH.shipping_dt, 101) < GETDATE() THEN CONVERT(VARCHAR(10), DATEADD(day, 1, GETDATE()), 101) ELSE CONVERT(varchar(10), OH.shipping_dt, 101) END AS [SHP/RECV DT], CAST(OL.qty_to_ship AS INT) * BM.qty_per_par * - 1 AS QTY, '' AS [PROJ QOH], CAST(RTRIM(LTRIM(OH.ord_no)) AS VARCHAR) AS [ORDER], OH.ship_to_name AS [VEND/CUS], CONVERT(varchar(10), OH.entered_dt, 101) AS [ORDER DATE], NULL AS [CONTAINER INFO], 
+SELECT BM.comp_item_no AS ITEM, BMIM.item_desc_1 AS ItemDesc1, BMIM.item_desc_2 AS ItemDesc2, 'SALE' AS [PO/SLS], 
+	--CASE WHEN CONVERT(varchar(10), OH.shipping_dt, 101) < GETDATE() THEN CONVERT(VARCHAR(10), DATEADD(day, 0, GETDATE()), 101) 
+		 --ELSE 
+		 CONVERT(varchar(10), OH.shipping_dt, 101) --END 
+		 AS [SHP/RECV DT], CAST(OL.qty_to_ship AS INT) * BM.qty_per_par * - 1 AS QTY, 
+	'' AS [PROJ QOH], CAST(RTRIM(LTRIM(OH.ord_no)) AS VARCHAR) AS [ORDER], OH.ship_to_name AS [VEND/CUS], CONVERT(varchar(10), OH.entered_dt, 101) AS [ORDER DATE], NULL AS [CONTAINER INFO], 
 NULL  AS [Container Ship To], NULL AS [TRANSFER TO], BMIM.prod_cat AS [PROD CAT], LTRIM(OH.cus_no) AS [CUS NO], BMIM.item_note_1 AS CH, 
  OH.cus_alt_adr_cd AS STORE, OL.item_no AS [PARENT ITEM ON SALES ORD], BMIM.item_note_4 AS ESS, 
  BMIM.extra_10 AS usage_ytd, 
@@ -110,9 +118,10 @@ WHERE (OH.ord_type = 'O') AND (IM2.prod_cat NOT IN ('036', '336', '102', '037'))
                    
 UNION ALL
 
-SELECT OL.item_no AS ITEM, IM2.item_desc_1 AS ItemDesc1, IM2.item_desc_2 AS ItemDesc2, 'SALE' AS [PO/SLS], CASE WHEN CONVERT(varchar(10), 
-              OH.shipping_dt, 101) < GETDATE() THEN CONVERT(VARCHAR(10), DATEADD(day, 1, GETDATE()), 101) ELSE CONVERT(varchar(10), 
-              OH.shipping_dt, 101) END AS [SHP/RECV DT], OL.qty_to_ship * - 1 AS QTY, '' AS [PROJ QOH], 
+SELECT OL.item_no AS ITEM, IM2.item_desc_1 AS ItemDesc1, IM2.item_desc_2 AS ItemDesc2, 'SALE' AS [PO/SLS], --CASE WHEN CONVERT(varchar(10), 
+              --OH.shipping_dt, 101) < GETDATE() THEN CONVERT(VARCHAR(10), DATEADD(day, 0, GETDATE()), 101) ELSE 
+              CONVERT(varchar(10),OH.shipping_dt, 101) --END 
+              AS [SHP/RECV DT], OL.qty_to_ship * - 1 AS QTY, '' AS [PROJ QOH], 
               CAST(RTRIM(LTRIM(OH.ord_no)) AS VARCHAR) AS [ORDER], OH.ship_to_name AS [VEND/CUS], 
               CONVERT(varchar(10), OH.entered_dt, 101) AS [ORDER DATE], NULL AS [CONTAINER INFO], NULL 
               AS [Container Ship To], NULL AS [TRANSFER TO], OL.prod_cat AS [PROD CAT], LTRIM(OH.cus_no) AS [CUS NO], 

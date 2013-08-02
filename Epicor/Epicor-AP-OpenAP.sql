@@ -1,4 +1,4 @@
---Open AP
+--Open AP Header Only
 SELECT DISTINCT APInvHed.InvoiceDate, APInvHed.InvoiceNum, APInvHed.Description AS [AP Header Description], APInvHed.InvoiceAmt, APInvHed.EntryPerson, APInvHed.VendorNum, VEND.Name
 FROM APInvHed --JOIN dbo.APInvDtl ON APInvDtl.InvoiceNum = APInvHed.InvoiceNum 
 			  --LEFT OUTER JOIN APtran ON APInvHed.InvoiceNum = APtran.InvoiceNum

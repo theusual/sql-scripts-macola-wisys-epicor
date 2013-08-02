@@ -1,18 +1,16 @@
 --Verify load was correct
 SELECT *
-from [BG_BACKUP].[dbo].[inv_upload_070113] AS INV 
+from [BG_BACKUP].[dbo].[inv_upload_072913] AS INV 
 
 --Backup pre-post values from IMINVLOC
 SELECT * 
-INTO [BG_BACKUP].dbo.iminvloc_prepost_070113
+INTO [BG_BACKUP].dbo.iminvloc_prepost_072913_inf
 FROM dbo.iminvloc_sql 
 
 --Zero out all QOH, frz
 --NOTE: Disable trigger
 --AVG TIME: 3mins on RDP to HQSQL
 
-USE [001]
---USE [020]
 UPDATE iminvloc_sql
 SET qty_on_hand = 0, frz_dt = '2013-06-29 00:00:00.000', frz_qty = 0
 
@@ -36,9 +34,9 @@ WHERE iminvloc_sql.loc = Inventory.Dept AND iminvloc_sql.item_no = Inventory.ite
 /*MAKE SURE TO UPDATE THE INV TABLE REFERENCE TO THIS QUARTER'S INV UPLOAD*/
 BEGIN TRAN
     UPDATE IMINVLOC_SQL
-    SET iminvloc_sql.qty_on_hand = Inv.[Total], iminvloc_Sql.frz_qty = Inv.[Total]--, frz_dt = '2012-10-01 00:00:00.000'
-    FROM  [BG_BACKUP].[dbo].[inv_upload_070113] AS INV  
-		JOIN iminvloc_sql ON iminvloc_sql.item_no = Inv.Item_no AND iminvloc_sql.loc = Inv.Dept
+    SET iminvloc_sql.qty_on_hand = Inv.[QOH], iminvloc_Sql.frz_qty = Inv.[QOH]--, frz_dt = '2012-10-01 00:00:00.000'
+    FROM  [BG_BACKUP].[dbo].[inv_upload_072913-2] AS INV  
+		JOIN iminvloc_sql ON iminvloc_sql.item_no = Inv.Item_no AND iminvloc_sql.loc = Inv.Loc
 
 /*Pull all items that do not match and will not upload*/
 SELECT Inv.Item, INV.[TOTAL], INV.Dept

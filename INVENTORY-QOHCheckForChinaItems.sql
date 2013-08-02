@@ -1,14 +1,13 @@
 --ALTER VIEW Z_IMINVLOC_QOH_CHECK_CH AS
 
 --Created:	4/27/11	 By:	BG
---Last Updated:	04/03/13	 By:	BG
+--Last Updated:	07/03/13	 By:	BG
 --Purpose:	View for Inventory Check comparing expected QOH vs counts
 --1) First, update the usage_quarterly_with_levels view
 --2) Second, update the z_iminvloc_qoh_recd view
 --3) Last, update the inventory table references
---
 
-SELECT			IM.item_no, IM.frz_qty AS LastFrzQty, PO.Recvd AS QuarterlyRecvd, 
+SELECT			IM.item_no, IM.frz_qty AS LastFrzQty, IM.QOH AS [3/30 QOH], PO.Recvd AS QuarterlyRecvd, 
 				QU.Q_USAGE AS QuarterlyShipped, 
 				CASE WHEN PO.recvd IS NULL AND Q_USAGE IS NULL 
 					 THEN IM.frz_qty WHEN PO.recvd IS NULL 
@@ -20,8 +19,8 @@ SELECT			IM.item_no, IM.frz_qty AS LastFrzQty, PO.Recvd AS QuarterlyRecvd,
                 IM2.frz_qty AS [Updated FRZQTY], 
                 IM2.pur_or_mfg, IM2.item_desc_1, IM2.item_desc_2,
                 prod_cat
-FROM  (SELECT item_no, SUM(frz_qty) AS frz_qty
-               FROM   [BG_Backup].dbo.iminvloc_prepost_040313
+FROM  (SELECT item_no, SUM(frz_qty) AS frz_qty, SUM(qty_on_hand) AS QOH
+               FROM   [BG_Backup].dbo.iminvloc_prepost_070113
                WHERE loc NOT IN ('BR', 'IN','CAN')
                GROUP BY item_no) AS IM LEFT OUTER JOIN
                dbo.Z_IMINVLOC_USAGE_QUARTERLY AS QU ON QU.item_no = IM.item_no LEFT OUTER JOIN
