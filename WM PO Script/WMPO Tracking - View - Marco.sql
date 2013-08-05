@@ -208,7 +208,7 @@ WHERE (ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000')
        --Exclude CR
        AND (OL.prod_cat NOT IN ('2', '036', '037','102','336') OR LTRIM(OH.ord_no) IN ('697190','695496','696754','696650','695878','695530','696173','696547','696924','697354','695686','696661','696046','692044','695535','696809',' 695736','695632','695490','696480','696456','696370','697823','691111','697064','692430','696045','695110','696856','695633'))
        --Test Order
-       AND OH.ord_no = '  703734'
+       AND OH.ord_no = '  709539'
        --Exclude bad shipments that have to be manually fixed
        --AND ((OH.ord_no + RTRIM(OL.item_no)) NOT IN ('  701911OBP-BAN008OBV97'))
        --Add older orders

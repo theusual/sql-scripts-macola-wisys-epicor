@@ -1,6 +1,6 @@
-ALTER VIEW BG_SHIPPED AS
+--ALTER VIEW BG_SHIPPED AS
 --Created:	4/27/10	 By:	BG
---Last Updated:	8/14/12	 By:	BG
+--Last Updated:	8/2/13	 By:	BG
 --Purpose:	Aggregate all recent shipments from all sources
 --Last changes: --
 

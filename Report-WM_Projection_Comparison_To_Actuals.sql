@@ -3,12 +3,12 @@
 DECLARE @MonthsBack AS INT
 DECLARE @Month AS VARCHAR(20)
 
-SET @MonthsBack = -1
+SET @MonthsBack = -2
 SET @Month = DATENAME(MONTH,DATEADD(MONTH,@MonthsBack,GETDATE()))
 SELECT @Month
 
 SELECT     DISTINCT TOP (100) PERCENT QtyOrd.item_no , EDI.edi_item_num AS SAP#, IM.item_desc_1, IM.item_desc_2, INV.qty_on_hand AS QOH, 
-			QtyOrd.QtyOrd AS [QtyOrd], Forecast.[Jun 2013] AS [Forecast], (Forecast.[Jul 2013] - QtyOrd.QtyOrd) AS [DIFF], 
+			QtyOrd.QtyOrd AS [QtyOrd], Forecast.[May 2013] AS [Forecast], (Forecast.[May 2013] - QtyOrd.QtyOrd) AS [DIFF], 
 			CASE WHEN Forecast.[Sep 2013] IS NULL THEN 'N' ELSE 'Y' END AS [On Forecast?]
 FROM         (
 				SELECT SUM(QtyOrd) AS QtyOrd, item_no
@@ -61,11 +61,12 @@ FROM         (
 				) AS QtyOrd
 			 JOIN edcitmfl_sql EDI ON EDI.mac_item_num = QtyOrd.item_no
              LEFT OUTER JOIN (
-							  SELECT --SUM([Apr 2013]) AS [Apr 2013], SUM([May 2013]) AS [May 2013], 
+							  SELECT --SUM([Apr 2013]) AS [Apr 2013], 
+							  SUM([May 2013]) AS [May 2013], 
 							  SUM([Jun 2013]) AS [Jun 2013], 
 							  SUM([Jul 2013]) AS [Jul 2013], SUM([Aug 2013]) AS [Aug 2013], SUM([Sep 2013]) AS [Sep 2013], 
 							  SUM([Oct 2013]) AS [Oct 2013],[Article Number]
-							   FROM  dbo.WM_Forecast_2013_June AS Forecast 
+							   FROM  dbo.WM_Forecast_2013_May AS Forecast 
 							   GROUP BY [Article Number]
 							   ) AS Forecast ON Forecast.[Article Number] =  CAST(EDI.edi_item_num AS VARCHAR)
 			 JOIN Z_IMINVLOC INV ON INV.item_no = QtyOrd.item_no
@@ -73,7 +74,7 @@ FROM         (
 --GROUP BY Tot.item_no, Tot.cus_item_no, INV.qty_on_hand, QtyOrd.QtyOrd, Forecast.[Jun 2013], [Sep 2013]
 ORDER BY QtyOrd.item_no DESC
 
---SELECT * FROM dbo.WM_Forecast_2013 WHERE [Article Number] = '100061117'
+SELECT * FROM dbo.WM_Forecast_2013_May WHERE [Article Number] = '100061117'
 
 
 
