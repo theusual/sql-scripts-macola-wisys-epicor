@@ -6,7 +6,7 @@ ALTER PROC BG_BuildShipment
 AS
 BEGIN
 
-	-- UPDATED:  7/11/12      BY: BG
+	-- UPDATED:  8/7/13      BY: BG
 	-- Purpose: Write back data to wsShipment and update control tables -- For Wisys build shipment App
 	
 	BEGIN TRANSACTION
@@ -25,7 +25,7 @@ BEGIN
 	
   --Last, update the control tables with next in line BOL and Shipment
 	--Added to test BOLNo write back:--------------------------------------
-	INSERT INTO [BG_BACKUP].dbo.DevTesting	VALUES  (@NextBOLNo,@txtShipment,@NextBOLNo+1,NULL)	
+	--INSERT INTO [BG_BACKUP].dbo.DevTesting	VALUES  (@NextBOLNo,@txtShipment,@NextBOLNo+1,NULL)	
 	-----------------------------------------------------------------------
 	Update oectlfil_sql set next_bol_no = @NextBOLNo + 1
 	Update wssettings_sql set longvalue = @txtShipment + 1 where settinggroup = 'PikPak' and settingname = 'NextTruck'
