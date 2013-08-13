@@ -1,4 +1,4 @@
---ALTER VIEW BG_SHIPPED AS
+ALTER VIEW BG_SHIPPED AS
 --Created:	4/27/10	 By:	BG
 --Last Updated:	8/2/13	 By:	BG
 --Purpose:	Aggregate all recent shipments from all sources
@@ -65,3 +65,36 @@ WHERE /*OH.ord_no = '  703650' and*/ (CONVERT(varchar, CAST(rtrim(pp.ship_dt) AS
                     WHERE qty_to_ship > 0))
 GROUP BY OL.line_no, pp.ord_no, OL.item_no, oh.ship_via_cd, BL.ship_via_cd, pp.ParcelType, OL.loc, pp.TrackingNo, pp.weight, 
 			pp.ship_dt, pp.item_no, OH.cmt_3, pp.Pallet, pp.Carton_UCC128, pp.Pallet_UCC128
+			
+UNION ALL
+			
+--Shipments invoiced but not in wisys
+SELECT DISTINCT OL.line_no, ltrim(oh.ord_no) AS Ord_No, max(oh.id), 
+               CASE WHEN cmt_1 IS NULL THEN 'FXG' 
+					ELSE LEFT(cmt_1,3)  
+               END AS [Carrier_Cd], 
+               ol.Loc AS loc, 
+               '0.00' AS ship_cost, 
+               '0.00' AS total_cost, 
+               CASE WHEN cmt_3 IS NULL THEN MAX(CAST(OH.ord_no AS VARCHAR) + '00') 
+					ELSE cmt_3 
+			   END AS [tracking_no], 
+			   'INVOICED-NOTINWISYS' AS [zone], 
+               ol.unit_weight AS [Ship_weight], 
+               '' AS void_fg, 'P' AS complete_fg, 
+               SUM(OL.qty_to_ship) AS Qty, 
+               CONVERT(varchar(10), OL.shipped_dt, 101) AS [ship_dt], 
+               OL.item_no, 
+               cmt_3 AS [cmt_3_tracking_no], 
+               (SELECT MAX(pallet)+99999 FROM wspikpak) AS [Pallet/Carton ID]
+FROM  oelinhst_sql OL WITH (NOLOCK) INNER JOIN
+               oehdrhst_sql OH WITH (NOLOCK) ON OH.ord_no = ol.ord_no 
+WHERE  (CONVERT(varchar, CAST(rtrim(OH.inv_dt) AS datetime), 101) > DATEADD(day, - 35, GETDATE())) 
+		AND qty_to_ship > 0 
+		AND NOT ((OH.ord_no + OL.item_no) IN
+                   (SELECT ord_no + item_no
+                    FROM   wspikpak WITH (NOLOCK)                              
+                    WHERE shipped = 'Y'))
+        AND LTRIM(OH.cus_no) = '1575'
+GROUP BY OL.line_no, oh.ord_no, OL.item_no, oh.ship_via_cd, OL.loc,OL.unit_weight, 
+			ol.shipped_dt, ol.item_no, OH.cmt_3, OH.cmt_1
