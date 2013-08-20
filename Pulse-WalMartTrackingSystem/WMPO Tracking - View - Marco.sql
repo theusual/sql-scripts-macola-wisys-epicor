@@ -1,7 +1,7 @@
 --ALTER VIEW BG_WMPO AS
 
 --Created:	4/27/10			     By:	BG
---Last Updated:	07/29/13	     By:	BG
+--Last Updated:	08/15/13	     By:	BG
 --Purpose:	View for WM PO tracking
 --Last changes: 0) Added completely fake line script at bottom  1a)  Added old PO Num  1) Added qty_to_ship > 0 to where clause in shipping acknowledgements, and added temp table that calc's a sum of qty shipped per item per load # and puts that info in the qty shipped column 2) Fixed ship_instruction_1 in where clause to include NULL values
 
@@ -176,8 +176,9 @@ FROM  OELINHST_SQL OL  WITH (NOLOCK) INNER JOIN
 				AND ShpSum.ord_no = SH.ord_no AND ShpSum.tracking_no = SH.tracking_no
 	  --Join Below Added On 8/1/13:  Adds view to sum total qty shipped per item # for the total qty shipped column
 	   LEFT OUTER JOIN
-		   (SELECT LTRIM(ord_no) AS ord_no, item_no, SUM(qty) AS qty 
-			FROM wspikpak WITH (NOLOCK)
+		   (SELECT ord_no AS ord_no, item_no, SUM(qty) AS qty 
+			--changed from wspikpak on 8/15 to account for items not processed in Wisys (BG_shipped includes invoiced orders not proc. in wisys)
+			FROM bg_shipped WITH (NOLOCK)
 			GROUP BY item_no, ord_no) AS ShpSumTot ON ShpSumTot.item_no = SH.item_no  
 				AND ShpSumTot.ord_no = SH.ord_no 
 WHERE (ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000') 
@@ -200,7 +201,7 @@ WHERE (ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000')
        '  680261OBP-1822BSOBV97', '  680524MDWM-0015 SB', '  680524MDWM-0002 SB', '  680524MDWM-0003 SB', '  680524MDWM-0001 SB', 
        '  681451BAK-707 C OBV97', '  681451BAK-707EC OBV97', '  680451BAK-ARTBRDE 97', '  681591BAK-707EC OBV97', '  832531BAK-ARTBRDE 97')
        --Line added 11/9/11: Exclude orders entered more than 30 days ago
-       AND OH.inv_dt > DATEADD(DAY,-30,GETDATE())
+       AND OH.inv_dt > DATEADD(DAY,-33,GETDATE())
        --Line added 3/6/13: Exclude line items with a qty to ship of 0
        -- AND qty_to_ship > 0
        --Exclude fucked up orders with duplicate line numbers
@@ -208,7 +209,7 @@ WHERE (ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000')
        --Exclude CR
        AND (OL.prod_cat NOT IN ('2', '036', '037','102','336') OR LTRIM(OH.ord_no) IN ('697190','695496','696754','696650','695878','695530','696173','696547','696924','697354','695686','696661','696046','692044','695535','696809',' 695736','695632','695490','696480','696456','696370','697823','691111','697064','692430','696045','695110','696856','695633'))
        --Test Order
-       AND OH.ord_no = '  709539'
+       --AND OH.ord_no = '  711395'
        --Exclude bad shipments that have to be manually fixed
        --AND ((OH.ord_no + RTRIM(OL.item_no)) NOT IN ('  701911OBP-BAN008OBV97'))
        --Add older orders

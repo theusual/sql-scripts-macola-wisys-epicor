@@ -47,49 +47,230 @@ SELECT TOP (100) PERCENT '___' AS LN,
 			 THEN CAST(((qty_on_hand + qty_on_ord) / CEILING((z_iminvloc_usage.usage_ytd / (DATEDIFF(day,CONVERT(datetime, '01/01/2013', 103), GETDATE()) / 30.5)))) AS money) 
 		ELSE 0 END AS MOI,  
 		           
-        CASE  --If there is a qty projected, then do not use ESS
-					WHEN (NOT (imitmidx_sql.extra_1 = 'P') OR imitmidx_sql.extra_1 IS NULL OR imitmidx_sql.extra_6 = 'CH-US') AND
-                    (Proj.qty_proj > 0) AND (Z_IMINVLOC.qty_on_hand >= 0)
-                    AND (ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated, 0) < 0) THEN 'NC'
-                    WHEN (NOT (imitmidx_sql.extra_1 = 'P') OR imitmidx_sql.extra_1 IS NULL OR imitmidx_sql.extra_6 = 'CH-US') AND
-                    (Proj.qty_proj > 0) AND (Z_IMINVLOC.qty_on_hand < 0) AND
-                    ((ROUND(Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated, 0)) < 0) THEN 'NC'
-               WHEN (NOT (imitmidx_sql.extra_1 = 'P') OR imitmidx_sql.extra_1 IS NULL OR imitmidx_sql.extra_6 = 'CH-US') 
-               AND NOT (IMITMIDX_SQL.item_note_4 IS NULL) AND (PROJ.qty_proj IS NULL OR PROJ.qty_proj <=0) AND (Z_IMINVLOC.qty_on_hand <= 0) AND 
-               ((ROUND(Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated - IMITMIDX_SQL.item_note_4, 0)) < 0) THEN 'NC'  
-               WHEN (NOT (imitmidx_sql.extra_1 = 'P') OR imitmidx_sql.extra_1 IS NULL OR imitmidx_sql.extra_6 = 'CH-US') 
-               AND NOT (IMITMIDX_SQL.item_note_4 IS NULL) AND (PROJ.qty_proj IS NULL OR PROJ.qty_proj <=0) AND (Z_IMINVLOC.qty_on_hand > 0) AND 
-               ((ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated - IMITMIDX_SQL.item_note_4, 0)) < 0)  THEN 'NC'
-               WHEN (NOT (imitmidx_sql.extra_1 = 'P') OR  imitmidx_sql.extra_1 IS NULL OR imitmidx_sql.extra_6 = 'CH-US') 
-               AND NOT (IMITMIDX_SQL.item_note_4 IS NULL) AND (PROJ.qty_proj IS NULL OR PROJ.qty_proj <=0) AND (Z_IMINVLOC.qty_on_hand <= 0) AND 
-               ((ROUND(Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated - IMITMIDX_SQL.item_note_4, 0)) < 0)  THEN 'NC' 
-               WHEN (NOT (imitmidx_sql.extra_1 = 'P') OR imitmidx_sql.extra_1 IS NULL OR imitmidx_sql.extra_6 = 'CH-US') 
-               AND ((IMITMIDX_SQL.item_note_4 IS NULL) AND (Z_IMINVLOC.qty_on_hand > 0) 
-               AND (ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated, 0) < 0)) THEN 'NC' 
-               WHEN (NOT (imitmidx_sql.extra_1 = 'P') OR imitmidx_sql.extra_1 IS NULL OR imitmidx_sql.extra_6 = 'CH-US') 
-               AND ((IMITMIDX_SQL.item_note_4 IS NULL) AND (Z_IMINVLOC.qty_on_hand <= 0) AND 
-               (ROUND(Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated, 0) < 0)) THEN 'NC' 
-               WHEN (NOT (imitmidx_sql.extra_1 = 'P') OR imitmidx_sql.extra_1 IS NULL OR imitmidx_sql.extra_6 = 'CH-US') 
-               AND ((IMITMIDX_SQL.item_note_4 IS NULL) AND (Z_IMINVLOC.qty_on_hand > 0) AND 
-               (ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated, 0) < 0)) THEN 'NC' 
-               ELSE '' END AS [CHECK], 
-          '_____' AS 'Order',       
-          CASE --If there is a qty projected, then do not use ESS
-					WHEN (Proj.qty_proj > 0) AND (Z_IMINVLOC.qty_on_hand > 0)
+          CASE  WHEN (imitmidx_sql.extra_1 = 'P' AND imitmidx_sql.extra_6 != 'CH-US' AND imitmidx_sql.extra_1 IS NOT NULL)
+				THEN ''
+				--If there is a WM forecast and it is >= ESS and >= QPROJ then use the WM forecast
+					WHEN  dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) >= 0
+						 AND (dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) >= Proj.qty_proj) 
+						 AND (dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) >= imitmidx_Sql.item_note_4 OR imitmidx_Sql.item_note_4 IS NULL)
+						 AND (Z_IMINVLOC.qty_on_hand >= 0)
+						 AND (ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated-Proj.qty_proj) - CAST(dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) AS INT), 0))  < 0
+					THEN '666'--'NC'
+					WHEN  dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) >= 0
+						 AND (dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) >= Proj.qty_proj) 
+						 AND (dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) >= imitmidx_Sql.item_note_4 OR imitmidx_Sql.item_note_4 IS NULL)
+						 AND (Z_IMINVLOC.qty_on_hand <= 0)	
+						 AND (ROUND(Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated-Proj.qty_proj) - dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no), 0))  < 0					 
+					THEN '555'--'NC'
+					--No projections section, required to avoid nulls in the calculation--				
+					WHEN  dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) >= 0
+						 AND (Proj.qty_proj IS null) 
+						 AND (dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) >= imitmidx_Sql.item_note_4 OR imitmidx_Sql.item_note_4 IS NULL)
+						 AND (Z_IMINVLOC.qty_on_hand >= 0)
+						 AND (ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated) - dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no), 0)) < 0
+					THEN '444'--'NC'
+					WHEN  dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) > 0
+						 AND (Proj.qty_proj IS null) 
+						 AND (dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) >= imitmidx_Sql.item_note_4 OR imitmidx_Sql.item_note_4 IS NULL)
+						 AND (Z_IMINVLOC.qty_on_hand <= 0)		
+						 AND (ROUND(Z_IMINVLOC.qty_on_ord -(z_iminvloc_qall.qty_allocated) - dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no), 0)) < 0
+					THEN 'NC'							
+				--If there is an ESS and it is >= WMForecast and >= QPROJ then use the ESS and allocations w/o projections
+					WHEN imitmidx_Sql.item_note_4 >= 0
+						 AND (imitmidx_Sql.item_note_4 >= Proj.qty_proj) 
+						 AND (imitmidx_Sql.item_note_4 >= dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) OR dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) IS NULL)
+						 AND (Z_IMINVLOC.qty_on_hand > 0)
+						 AND (ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated-Proj.qty_proj) - imitmidx_Sql.item_note_4, 0)) < 0
+					THEN 'NC'
+					WHEN imitmidx_Sql.item_note_4 >= 0
+						 AND (imitmidx_Sql.item_note_4 >= Proj.qty_proj) 
+						 AND (imitmidx_Sql.item_note_4 >= dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) OR dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) IS NULL)
+						 AND (Z_IMINVLOC.qty_on_hand <= 0)	
+						 AND (ROUND(Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated-Proj.qty_proj) - imitmidx_Sql.item_note_4, 0)) < 0
+					THEN 'NC'
+					--No projections section, required to avoid nulls in the calculation--				
+					WHEN imitmidx_Sql.item_note_4 >= 0
+						 AND (imitmidx_Sql.item_note_4 >= Proj.qty_proj) 
+						 AND (imitmidx_Sql.item_note_4 >= dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) OR dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) IS NULL)
+						 AND (Z_IMINVLOC.qty_on_hand >= 0)
+						 AND (ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated-Proj.qty_proj) - dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no), 0)) < 0
+					THEN 'NC'
+					WHEN imitmidx_Sql.item_note_4 >= 0
+						 AND (imitmidx_Sql.item_note_4 >= Proj.qty_proj) 
+						 AND (imitmidx_Sql.item_note_4 >= dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) OR dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) IS NULL)
+						 AND (Z_IMINVLOC.qty_on_hand <= 0)	
+						 AND (ROUND(Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated-Proj.qty_proj) - dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no), 0))	< 0					 
+					THEN 'NC'				
+				--If there is no forecast but a qty projected and an ESS and it is >= ESS or there is no ESS, then use allocations w/ projections
+					WHEN (Proj.qty_proj >= 0) AND (Z_IMINVLOC.qty_on_hand > 0)
+					      AND (Proj.qty_proj >= imitmidx_Sql.item_note_4 OR imitmidx_Sql.item_note_4 IS NULL)
+					      AND (ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated, 0)) < 0
+					THEN 'NC'
+					WHEN (Proj.qty_proj >= 0) AND (Z_IMINVLOC.qty_on_hand <= 0) 
+						  AND (Proj.qty_proj >= imitmidx_Sql.item_note_4 OR imitmidx_Sql.item_note_4 IS NULL) 
+						  AND (ROUND(Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated, 0)) < 0
+					THEN 'NC'
+			   --If there is no forecast but a qty projected and an ESS and if qty projected is < then ESS, then use allocations w/o projections
+					WHEN (NOT (IMITMIDX_SQL.item_note_4 IS NULL)) AND (Z_IMINVLOC.qty_on_hand >= 0) AND Proj.qty_proj >= 0
+						 AND Proj.qty_proj < imitmidx_Sql.item_note_4
+						 AND (ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated - Proj.qty_proj) - IMITMIDX_SQL.item_note_4, 0)) < 0
+				    THEN 'NC'
+				    WHEN (NOT (IMITMIDX_SQL.item_note_4 IS NULL)) AND (Z_IMINVLOC.qty_on_hand <= 0) AND Proj.qty_proj >= 0 
+						 AND Proj.qty_proj < imitmidx_Sql.item_note_4
+						 AND (ROUND(Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated - Proj.qty_proj) - IMITMIDX_SQL.item_note_4, 0)) < 0
+				    THEN 'NC'
+			   --If there is a forecast and a qty projected but no ess, and forecast > qty projected, then use allocations w/o projections
+					WHEN IMITMIDX_SQL.item_note_4 IS NULL AND Proj.qty_proj >= 0
+						 AND dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) >= Proj.qty_proj
+						 AND (Z_IMINVLOC.qty_on_hand >= 0)
+						 AND (ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated - Proj.qty_proj) - dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no), 0))  < 0
+				    THEN 'NC'
+				    WHEN (NOT (IMITMIDX_SQL.item_note_4 IS NULL)) AND (Z_IMINVLOC.qty_on_hand <= 0) AND Proj.qty_proj >= 0 
+						 AND Proj.qty_proj < imitmidx_Sql.item_note_4
+						 AND (ROUND(Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated - Proj.qty_proj) - dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no), 0)) < 0
+				    THEN 'NC'
+               --If there is a forecast and ess but no qty projected, and forecast > qty projected, then use allocations w/ projections
+					WHEN IMITMIDX_SQL.item_note_4 IS NOT NULL AND Proj.qty_proj IS NULL
+						 AND dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) >= IMITMIDX_SQL.item_note_4
+						 AND (Z_IMINVLOC.qty_on_hand >= 0)
+						 AND (ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated) - dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no), 0)) < 0
+				    THEN 'NC'
+				    WHEN (NOT (IMITMIDX_SQL.item_note_4 IS NULL)) AND (Z_IMINVLOC.qty_on_hand <= 0) AND Proj.qty_proj >= 0 
+						 AND Proj.qty_proj < imitmidx_Sql.item_note_4
+						 AND (ROUND(Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated) - dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no), 0)) < 0
+				    THEN 'NC'
+			   --If there is no forecast and no qty projected but an ESS, then use ESS and normal allocations                                
+				    WHEN (NOT (IMITMIDX_SQL.item_note_4 IS NULL)) AND Proj.qty_proj IS NULL
+						 AND (Z_IMINVLOC.qty_on_hand >= 0) 
+						 AND (ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated - IMITMIDX_SQL.item_note_4, 0)) < 0
+				    THEN 'NC'
+				    WHEN (NOT (IMITMIDX_SQL.item_note_4 IS NULL)) AND Proj.qty_proj IS NULL
+						 AND (Z_IMINVLOC.qty_on_hand < 0) 
+						 AND (ROUND(Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated - IMITMIDX_SQL.item_note_4, 0))  < 0
+				    THEN 'NC'
+			   --If there is no forecast and no ESS but an qty projected, then use qty projected and allocationed w/o projections
+				   WHEN (IMITMIDX_SQL.item_note_4 IS NULL) AND dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) IS NULL
+						 AND Proj.qty_proj >= 0	 AND (Z_IMINVLOC.qty_on_hand >= 0)
+						 AND (ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated - Proj.qty_proj) - Proj.qty_proj, 0)) < 0  
+				   THEN 'NC'
+				   WHEN (IMITMIDX_SQL.item_note_4 IS NULL) AND dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) IS NULL
+						AND Proj.qty_proj >= 0 AND (Z_IMINVLOC.qty_on_hand < 0)  
+						AND (ROUND(Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated - Proj.qty_proj) - Proj.qty_proj, 0))	 < 0 
+				   THEN 'NC'
+			  --If there is no forecast and no ESS and no qty projected, then use none		
+				   WHEN (IMITMIDX_SQL.item_note_4 IS NULL) AND dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) IS NULL
+						AND Proj.qty_proj IS NULL
+						AND (Z_IMINVLOC.qty_on_hand >= 0) 
+						AND (ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated, 0)) < 0 
+				   THEN 'NC'  
+				   WHEN (IMITMIDX_SQL.item_note_4 IS NULL) AND dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) IS NULL
+						AND Proj.qty_proj IS NULL
+						AND (Z_IMINVLOC.qty_on_hand < 0) 
+						AND (ROUND(Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated, 0)) < 0
+				  THEN  'NC'	            
+         ELSE '' END AS [CHECK],
+               
+          '_____' AS 'Order',   
+              
+          CASE  --If there is a WM forecast and it is >= ESS and >= QPROJ then use the WM forecast
+					WHEN  dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) >= 0
+						 AND (dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) >= Proj.qty_proj) 
+						 AND (dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) >= imitmidx_Sql.item_note_4 OR imitmidx_Sql.item_note_4 IS NULL)
+						 AND (Z_IMINVLOC.qty_on_hand >= 0)
+					THEN (ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated-Proj.qty_proj) - CAST(dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) AS INT), 0))   
+					WHEN  dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) >= 0
+						 AND (dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) >= Proj.qty_proj) 
+						 AND (dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) >= imitmidx_Sql.item_note_4 OR imitmidx_Sql.item_note_4 IS NULL)
+						 AND (Z_IMINVLOC.qty_on_hand <= 0)						 
+					THEN (ROUND(Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated-Proj.qty_proj) - dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no), 0))   
+					--No projections section, required to avoid nulls in the calculation--				
+					WHEN  dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) >= 0
+						 AND (Proj.qty_proj IS null) 
+						 AND (dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) >= imitmidx_Sql.item_note_4 OR imitmidx_Sql.item_note_4 IS NULL)
+						 AND (Z_IMINVLOC.qty_on_hand >= 0)
+					THEN (ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated) - dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no), 0))
+					WHEN  dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) > 0
+						 AND (Proj.qty_proj IS null) 
+						 AND (dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) >= imitmidx_Sql.item_note_4 OR imitmidx_Sql.item_note_4 IS NULL)
+						 AND (Z_IMINVLOC.qty_on_hand <= 0)						 
+					THEN (ROUND(Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated) - dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no), 0))							
+				--If there is an ESS and it is >= WMForecast and >= QPROJ then use the ESS
+					WHEN imitmidx_Sql.item_note_4 >= 0
+						 AND (imitmidx_Sql.item_note_4 >= Proj.qty_proj) 
+						 AND (imitmidx_Sql.item_note_4 >= dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) OR dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) IS NULL)
+						 AND (Z_IMINVLOC.qty_on_hand > 0)
+					THEN (ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated-Proj.qty_proj) - imitmidx_Sql.item_note_4, 0))
+					WHEN imitmidx_Sql.item_note_4 >= 0
+						 AND (imitmidx_Sql.item_note_4 >= Proj.qty_proj) 
+						 AND (imitmidx_Sql.item_note_4 >= dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) OR dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) IS NULL)
+						 AND (Z_IMINVLOC.qty_on_hand <= 0)					 
+					THEN (ROUND(Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated-Proj.qty_proj) - imitmidx_Sql.item_note_4, 0))	
+					--No projections section, required to avoid nulls in the calculation--				
+					WHEN imitmidx_Sql.item_note_4 >= 0
+						 AND (imitmidx_Sql.item_note_4 >= Proj.qty_proj) 
+						 AND (imitmidx_Sql.item_note_4 >= dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) OR dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) IS NULL)
+						 AND (Z_IMINVLOC.qty_on_hand >= 0)
+					THEN (ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated) - dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no), 0))
+					WHEN imitmidx_Sql.item_note_4 >= 0
+						 AND (imitmidx_Sql.item_note_4 >= Proj.qty_proj) 
+						 AND (imitmidx_Sql.item_note_4 >= dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) OR dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) IS NULL)
+						 AND (Z_IMINVLOC.qty_on_hand <= 0)					 
+					THEN (ROUND(Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated) - dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no), 0))						
+				--If there is no forecast but a qty projected and an ESS and it is >= ESS or there is no ESS, then use allocations w/ projections
+					WHEN (Proj.qty_proj >= 0) AND (Z_IMINVLOC.qty_on_hand > 0)
+					      AND (Proj.qty_proj >= imitmidx_Sql.item_note_4 OR imitmidx_Sql.item_note_4 IS NULL)
 					THEN (ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated, 0))
-					WHEN (Proj.qty_proj > 0) AND (Z_IMINVLOC.qty_on_hand <= 0)
+					WHEN (Proj.qty_proj >= 0) AND (Z_IMINVLOC.qty_on_hand <= 0) 
+						  AND (Proj.qty_proj >= imitmidx_Sql.item_note_4 OR imitmidx_Sql.item_note_4 IS NULL) 
 					THEN (ROUND(Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated, 0))
-               WHEN (NOT (IMITMIDX_SQL.item_note_4 IS NULL)) AND (Z_IMINVLOC.qty_on_hand >= 0) 
-               THEN (ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated - IMITMIDX_SQL.item_note_4, 0)) 
-               WHEN (NOT (IMITMIDX_SQL.item_note_4 IS NULL)) AND (Z_IMINVLOC.qty_on_hand <= 0) 
-               THEN (ROUND(Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated - IMITMIDX_SQL.item_note_4, 0)) 
-               WHEN (IMITMIDX_SQL.item_note_4 IS NULL) AND (Z_IMINVLOC.qty_on_hand >= 0) AND NOT (Z_iminvloc_qall.qty_allocated IS NULL)
-               THEN (ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated, 0))     
-               WHEN (IMITMIDX_SQL.item_note_4 IS NULL) AND (Z_IMINVLOC.qty_on_hand >= 0)  AND (Z_iminvloc_qall.qty_allocated IS NULL)
-               THEN (ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord, 0))          
-               WHEN (IMITMIDX_SQL.item_note_4 IS NULL) AND (Z_IMINVLOC.qty_on_hand <= 0) 
-               THEN (ROUND(Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated, 0))  
-         ELSE '' END AS [QOH+QOO-QOA-SS],     
+			   --If there is no forecast but a qty projected and an ESS and if qty projected is < then ESS, then use allocations w/o projections
+					WHEN (NOT (IMITMIDX_SQL.item_note_4 IS NULL)) AND (Z_IMINVLOC.qty_on_hand >= 0) AND Proj.qty_proj >= 0
+						 AND Proj.qty_proj < imitmidx_Sql.item_note_4
+				    THEN (ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated - Proj.qty_proj) - IMITMIDX_SQL.item_note_4, 0)) 
+				    WHEN (NOT (IMITMIDX_SQL.item_note_4 IS NULL)) AND (Z_IMINVLOC.qty_on_hand <= 0) AND Proj.qty_proj >= 0 
+						 AND Proj.qty_proj < imitmidx_Sql.item_note_4
+				    THEN (ROUND(Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated - Proj.qty_proj) - IMITMIDX_SQL.item_note_4, 0)) 
+			   --If there is a forecast and a qty projected but no ess, and forecast > qty projected, then use allocations w/o projections
+					WHEN IMITMIDX_SQL.item_note_4 IS NULL AND Proj.qty_proj >= 0
+						 AND dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) >= Proj.qty_proj
+						 AND (Z_IMINVLOC.qty_on_hand >= 0)
+				    THEN 333--(ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated - Proj.qty_proj) - dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no), 0)) 
+				    WHEN (NOT (IMITMIDX_SQL.item_note_4 IS NULL)) AND (Z_IMINVLOC.qty_on_hand <= 0) AND Proj.qty_proj >= 0 
+						 AND Proj.qty_proj < imitmidx_Sql.item_note_4
+				    THEN (ROUND(Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated - Proj.qty_proj) - dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no), 0)) 
+               --If there is a forecast and ess but no qty projected, and forecast > qty projected, then use allocations w/ projections
+					WHEN IMITMIDX_SQL.item_note_4 IS NOT NULL AND Proj.qty_proj IS NULL
+						 AND dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) >= IMITMIDX_SQL.item_note_4
+						 AND (Z_IMINVLOC.qty_on_hand >= 0)
+				    THEN (ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated) - dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no), 0)) 
+				    WHEN (NOT (IMITMIDX_SQL.item_note_4 IS NULL)) AND (Z_IMINVLOC.qty_on_hand <= 0) AND Proj.qty_proj >= 0 
+						 AND Proj.qty_proj < imitmidx_Sql.item_note_4
+				    THEN (ROUND(Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated) - dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no), 0)) 
+			   --If there is no forecast and no qty projected but an ESS, then use ESS and normal allocations                                
+				    WHEN (NOT (IMITMIDX_SQL.item_note_4 IS NULL)) AND Proj.qty_proj IS NULL
+						 AND (Z_IMINVLOC.qty_on_hand >= 0) 
+				    THEN (ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated - IMITMIDX_SQL.item_note_4, 0)) 
+				    WHEN (NOT (IMITMIDX_SQL.item_note_4 IS NULL)) AND (Z_IMINVLOC.qty_on_hand <= 0) 
+				    THEN (ROUND(Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated - IMITMIDX_SQL.item_note_4, 0)) 
+			   --If there is no forecast and no ESS but an qty projected, then use qty projected and allocationed w/o projections
+				   WHEN (IMITMIDX_SQL.item_note_4 IS NULL) AND dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) IS NULL
+						 AND Proj.qty_proj >= 0	 AND (Z_IMINVLOC.qty_on_hand >= 0) 
+				   THEN (ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated - Proj.qty_proj) - Proj.qty_proj, 0))	
+				   WHEN (IMITMIDX_SQL.item_note_4 IS NULL) AND dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) IS NULL
+						AND Proj.qty_proj >= 0 AND (Z_IMINVLOC.qty_on_hand < 0)  
+				   THEN (ROUND(Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated - Proj.qty_proj) - Proj.qty_proj, 0))				
+			  --If there is no forecast and no ESS and no qty projected, then use none		
+				   WHEN (IMITMIDX_SQL.item_note_4 IS NULL) AND dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) IS NULL
+						AND Proj.qty_proj IS NULL
+						AND (Z_IMINVLOC.qty_on_hand >= 0) 
+				   THEN (ROUND(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated, 0))     
+				   WHEN (IMITMIDX_SQL.item_note_4 IS NULL) AND dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) IS NULL
+						AND Proj.qty_proj IS NULL
+						AND (Z_IMINVLOC.qty_on_hand < 0) 
+				   THEN (ROUND(Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated, 0))	            
+         ELSE 0 
+         END AS [QOH+QOO-QOA-(ESS/WMF/QPROJ)],     
+         
         /*     
        CASE WHEN (NOT (imitmidx_sql.extra_1 = 'P') OR imitmidx_sql.extra_1 IS NULL OR  imitmidx_sql.extra_6 = 'CH-US') 
 				AND (Z_IMINVLOC.qty_on_hand <= 0) 

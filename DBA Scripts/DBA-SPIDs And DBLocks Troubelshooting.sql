@@ -28,6 +28,7 @@ LEFT JOIN sys.dm_exec_connections con
 ON con.session_id = ses.session_id
 WHERE ses.[status] != 'sleeping'
 
+KILL 755
 
 --Show wait stats grouped by program
 SELECT
