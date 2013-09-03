@@ -1,6 +1,6 @@
-ALTER VIEW BG_SHIPPED AS
+--ALTER VIEW BG_SHIPPED AS
 --Created:	4/27/10	 By:	BG
---Last Updated:	8/2/13	 By:	BG
+--Last Updated:	8/20/13	 By:	BG
 --Purpose:	Aggregate all recent shipments from all sources
 --Last changes: --
 
@@ -30,8 +30,9 @@ FROM  oelinhst_sql OL WITH (NOLOCK) INNER JOIN
                [001].dbo.wsPikPak pp WITH (NOLOCK) ON ol.line_no = pp.line_no AND ol.ord_no = pp.ord_no LEFT OUTER JOIN
                [001].dbo.wsShipment ws WITH (NOLOCK) ON ws.shipment = pp.shipment  LEFT OUTER JOIN
                [001].dbo.oebolfil_sql BL WITH (NOLOCK) ON BL.bol_no = ws.bol_no
-WHERE ((CONVERT(varchar, CAST(rtrim(oh.inv_dt) AS datetime), 101) > DATEADD(day, - 35, GETDATE())) /*AND qty_to_ship > 0  */ 
+WHERE ((CONVERT(varchar, CAST(rtrim(oh.inv_dt) AS datetime), 101) > DATEADD(day, - 85, GETDATE())) /*AND qty_to_ship > 0  */ 
 				AND (pp.shipped = 'Y'))
+				AND pp.qty > 0
 				--TEST
 				--AND oh.ord_no = '  703477'  
                /*Older orders*/ 
@@ -55,8 +56,9 @@ FROM  [001].dbo.wsPikPak pp WITH (NOLOCK) INNER JOIN
                oeordhdr_sql OH WITH (NOLOCK) ON OH.ord_no = ol.ord_no INNER JOIN
                [001].dbo.wsShipment ws WITH (NOLOCK) ON ws.shipment = pp.shipment LEFT OUTER JOIN
                [001].dbo.oebolfil_sql BL WITH (NOLOCK) ON BL.bol_no = ws.bol_no
-WHERE /*OH.ord_no = '  703650' and*/ (CONVERT(varchar, CAST(rtrim(pp.ship_dt) AS datetime), 101) > DATEADD(day, - 35, GETDATE())) 
+WHERE /*OH.ord_no = '  703650' and*/ (CONVERT(varchar, CAST(rtrim(pp.ship_dt) AS datetime), 101) > DATEADD(day, - 85, GETDATE())) 
 		AND pp.Shipped = 'Y' 
+		AND pp.qty > 0
 		AND qty_to_ship > 0 
 		AND NOT ((OH.ord_no + OL.item_no) IN
                    (SELECT OH.ord_no + item_no
@@ -86,10 +88,11 @@ SELECT DISTINCT OL.line_no, ltrim(oh.ord_no) AS Ord_No, max(oh.id),
                CONVERT(varchar(10), OL.shipped_dt, 101) AS [ship_dt], 
                OL.item_no, 
                cmt_3 AS [cmt_3_tracking_no], 
-               (SELECT MAX(pallet)+99999 FROM wspikpak) AS [Pallet/Carton ID]
+               --updated 8/20/13:  changed to null so that the PO tracking upload will default to use OL.id to derive pallet ID
+               null AS [Pallet/Carton ID]
 FROM  oelinhst_sql OL WITH (NOLOCK) INNER JOIN
                oehdrhst_sql OH WITH (NOLOCK) ON OH.ord_no = ol.ord_no 
-WHERE  (CONVERT(varchar, CAST(rtrim(OH.inv_dt) AS datetime), 101) > DATEADD(day, - 35, GETDATE())) 
+WHERE  (CONVERT(varchar, CAST(rtrim(OH.inv_dt) AS datetime), 101) > DATEADD(day, - 85, GETDATE())) 
 		AND qty_to_ship > 0 
 		AND NOT ((OH.ord_no + OL.item_no) IN
                    (SELECT ord_no + item_no

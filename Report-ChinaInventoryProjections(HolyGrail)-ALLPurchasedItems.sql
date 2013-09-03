@@ -11,7 +11,7 @@ SELECT DISTINCT TOP 100 PERCENT  Item, ItemDesc1, ItemDesc2, [PO/SLS], [SHP OR R
 		dbo.fn_BG_WMProjection(IM.item_no) AS [WM Forecast], 
 		usage_ytd, 
 		[ParentFlag] AS [P/S/C Fg],
-		'' AS [NC]
+		'' AS [NC], IM.item_note_5 AS n5
 
 FROM  dbo.imitmidx_sql IM JOIN
 	(
@@ -20,7 +20,7 @@ FROM  dbo.imitmidx_sql IM JOIN
 	'QOH' AS ORD#, 'QOH' AS [VEND/CUS], 'QOH' AS [ORD DT],'QOH' AS CONTAINER, 'QOH' AS [CONT. SHP TO], 'QOH' AS [XFER TO], 
 	IM.prod_cat AS [PROD CAT], NULL AS [CUS#/VEND#], IM2.item_note_1 AS CH,'QOH' AS STORE, 'QOH' AS [PARENT ITEM (ONLY ON SALES)], 
 	IM2.item_note_4 AS ESS, IM2.extra_10 AS usage_ytd, 
-	'' AS [OrdType2], IM2.extra_1 AS 'ParentFlag'
+	'' AS [OrdType2], IM2.extra_1 AS 'ParentFlag', IM2.item_note_5
 	FROM   dbo.Z_IMINVLOC AS IM 
 			INNER JOIN  dbo.imitmidx_sql AS IM2 ON IM2.item_no = IM.item_no 
 			LEFT OUTER JOIN
@@ -41,7 +41,7 @@ FROM  dbo.imitmidx_sql IM JOIN
 			CONVERT(varchar(10), GETDATE(), 101) AS [SHP OR RECV DT], BMINV.qty_on_hand AS [QTY (QOH/QTY SLS/QTY REC)], '' AS [PROJ QOH], 
 			'QOH' AS ORD#, 'QOH' AS [VEND/CUS], 'QOH' AS [ORD DT],'QOH' AS CONTAINER, 'QOH' AS [CONT. SHP TO], 'QOH' AS [XFER TO], BMIM.prod_cat AS [PROD CAT], 
 			NULL AS [CUS#/VEND#], BMIM.item_note_1 AS CH,'QOH' AS STORE, 'QOH' AS [PARENT ITEM (ONLY ON SALES)], BMIM.item_note_4 AS ESS, 
-			BMIM.extra_10 AS usage_ytd, '' AS [OrdType2], BMIM.extra_1 AS 'ParentFlag'
+			BMIM.extra_10 AS usage_ytd, '' AS [OrdType2], BMIM.extra_1 AS 'ParentFlag', BMIM.item_note_5
 	FROM  dbo.oeordhdr_sql AS OH INNER JOIN
 				  dbo.oeordlin_sql AS OL ON OL.ord_no = OH.ord_no INNER JOIN
 				  dbo.imitmidx_sql AS IM ON IM.item_no = OL.item_no JOIN
@@ -74,7 +74,7 @@ FROM  dbo.imitmidx_sql IM JOIN
 				FROM   BG_CH_Vendors) THEN CONVERT(varchar(10), DATEADD(DAY, 90, PH.ord_dt), 101) 
 			 ELSE CONVERT(varchar(10), PL.promise_dt, 101) END AS [SHP/RECV DT], CAST(PL.qty_remaining AS int) AS QTY, '' AS [PROJ QOH], CAST(LTRIM(SUBSTRING(PL.ord_no, 1, 6)) AS VARCHAR) 
 				  AS [ORDER], AP.vend_name AS [VEND/CUS], CONVERT(varchar(10), PH.ord_dt, 101) AS [ORDER DATE], PL.user_def_fld_1 AS [CONTAINER INFO], PL.user_def_fld_3 AS [Container Ship To], PS.ship_to_desc AS [TRANSFER TO], IM2.prod_cat AS [PROD CAT], LTRIM(PH.vend_no) AS [CUS NO], IM2.item_note_1 AS CH, '' AS STORE, '' AS [PARENT ITEM], IM2.item_note_4 AS ESS, IM2.extra_10 AS usage_ytd, 
-	'', IM2.extra_1 AS 'ParentFlag'
+	'', IM2.extra_1 AS 'ParentFlag', IM2.item_note_5
 	FROM  dbo.apvenfil_sql AS AP INNER JOIN
 				  dbo.poordhdr_sql AS PH ON AP.vend_no = PH.vend_no INNER JOIN
 				  dbo.poordlin_sql AS PL ON PL.ord_no = PH.ord_no AND PL.vend_no = PH.vend_no INNER JOIN
@@ -107,7 +107,7 @@ FROM  dbo.imitmidx_sql IM JOIN
 	NULL  AS [Container Ship To], NULL AS [TRANSFER TO], BMIM.prod_cat AS [PROD CAT], LTRIM(OH.cus_no) AS [CUS NO], BMIM.item_note_1 AS CH, 
 	 OH.cus_alt_adr_cd AS STORE, OL.item_no AS [PARENT ITEM ON SALES ORD], BMIM.item_note_4 AS ESS, 
 	 BMIM.extra_10 AS usage_ytd, 
-	 OH.user_def_Fld_3, BMIM.extra_1 AS 'ParentFlag'
+	 OH.user_def_Fld_3, BMIM.extra_1 AS 'ParentFlag', BMIM.item_note_5
 	FROM  dbo.oeordhdr_sql AS OH INNER JOIN
 				  dbo.oeordlin_sql AS OL ON OL.ord_no = OH.ord_no INNER JOIN
 				  dbo.imitmidx_sql AS IM2 ON IM2.item_no = OL.item_no INNER JOIN
@@ -140,7 +140,7 @@ FROM  dbo.imitmidx_sql IM JOIN
 				  AS [Container Ship To], NULL AS [TRANSFER TO], OL.prod_cat AS [PROD CAT], LTRIM(OH.cus_no) AS [CUS NO], 
 				  IM2.item_note_1 AS CH, OH.cus_alt_adr_cd AS STORE, OL.item_no AS [PARENT ITEM ON SALES ORD], IM2.item_note_4 AS ESS, 
 				  IM2.extra_10 AS usage_ytd,
-				  OH.user_def_fld_3, IM2.extra_1 AS 'ParentFlag'
+				  OH.user_def_fld_3, IM2.extra_1 AS 'ParentFlag', IM2.item_note_5
 	FROM  dbo.oeordhdr_sql AS OH INNER JOIN
 				  dbo.oeordlin_sql AS OL ON OL.ord_no = OH.ord_no INNER JOIN
 				  dbo.imitmidx_sql AS IM2 ON IM2.item_no = OL.item_no LEFT OUTER JOIN

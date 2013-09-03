@@ -1,9 +1,9 @@
 --ALTER VIEW BG_LATE_ORDERS_NONWM AS 
 
 --Created:	02/01/11	 By:	BG
---Last Updated:	4/3/13	 By:	BG
+--Last Updated:	9/3/13	 By:	BG
 --Purpose:	View for Late Order Report refreshed each morning by production control
---Last Change:  Added back prod cat #2, added back cus #9999
+--Last Change:  Adding ship_instruction_1 for WM GO dates.  Added back prod cat #2, added back cus #9999
 
 
 SELECT TOP (100) PERCENT CONVERT(varchar, CAST(RTRIM(dbo.oeordhdr_sql.shipping_dt) AS datetime), 101) AS [Shipping Date], CONVERT(varchar, 
@@ -15,7 +15,7 @@ SELECT TOP (100) PERCENT CONVERT(varchar, CAST(RTRIM(dbo.oeordhdr_sql.shipping_d
                dbo.oeordhdr_sql.cus_alt_adr_cd AS [Store #], 
                dbo.imitmidx_sql.item_note_1 AS NOTE1, CAST(dbo.Z_IMINVLOC.qty_on_hand AS INT) AS QOH, CAST(dbo.Z_IMINVLOC.qty_on_ord AS INT)AS QOO, 
                dbo.oeordhdr_sql.user_def_fld_4 AS [WM OrdType], dbo.oeordhdr_sql.oe_po_no, 
-               dbo.oeordlin_sql.item_desc_1, dbo.oeordlin_sql.item_desc_2
+               dbo.oeordlin_sql.item_desc_1, dbo.oeordlin_sql.item_desc_2, ship_instruction_1 AS [GO Date-ShipInstr1]
 FROM  dbo.oeordlin_sql INNER JOIN
                dbo.imitmidx_sql WITH (NOLOCK) ON dbo.oeordlin_sql.item_no = dbo.imitmidx_sql.item_no INNER JOIN
                dbo.Z_IMINVLOC WITH (NOLOCK) ON dbo.Z_IMINVLOC.item_no = dbo.imitmidx_sql.item_no INNER JOIN
