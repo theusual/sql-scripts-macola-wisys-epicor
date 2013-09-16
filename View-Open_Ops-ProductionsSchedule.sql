@@ -1,11 +1,12 @@
---ALTER VIEW Z_OPEN_OPS_CMT AS
+--ALTER VIEW Z_OPEN_OPS AS
 --Created:	8/23/12	 By:	BG
---Last Updated:	8/20/13	 By:	BG
+--Last Updated:	9/10/13	 By:	BG
 --Purpose:	Ops Schedule
 --Last changes: --
 
 SELECT DISTINCT 
-                      CASE WHEN AUD_DTS.aud_dt_min IS NULL THEN OH.entered_dt ELSE AUD_DTS.aud_dt_min END AS PRINTED, AUD_DTS.aud_dt_max AS [LAST CHANGE], 
+                      CASE WHEN AUD_DTS.aud_dt_min IS NULL THEN OH.entered_dt ELSE AUD_DTS.aud_dt_min END AS PRINTED, 
+                      AUD_DTS.aud_dt_max AS [LAST CHANGE], 
                       CASE WHEN AUD_LAST.aud_action = 'A' THEN 'ADD' WHEN AUD_LAST.aud_action = 'C' THEN 'UPD' ELSE NULL END AS [CHANGE TYPE], 
                       AUD_LAST.user_name AS [USER], OH.mfg_loc AS [ORDER LOC], OL.loc AS [ITEM LOC], OH.shipping_dt AS [SHIP DATE], LTRIM(OH.ord_no) AS [ORDER], 
                       LTRIM(OH.cus_no) AS CUST, OH.ship_to_name AS [SHIP TO], OL.qty_ordered AS [PARENT QTY], OL.item_no AS ITEM, '' AS KIT, CASE WHEN CMT.line_seq_no IS NULL
@@ -39,11 +40,15 @@ FROM         dbo.oeordlin_sql AS OL WITH (NOLOCK) INNER JOIN
                             WHERE      (NOT (user_def_fld_5 IN ('', 'TEST'))) AND (aud_action IN ('A', 'C'))
                             GROUP BY ord_no) AS AUD_LAST ON AUD_LAST.ord_no = OH.ord_no AND AUD_LAST.aud_Dt = AUD_DTS.aud_dt_max LEFT OUTER JOIN
                       dbo.wsPikPak AS PP WITH (NOLOCK) ON PP.Ord_no = OH.ord_no AND PP.Line_no = OL.line_no
-WHERE     (OH.ord_type = 'O') AND (LTRIM(OH.cus_no) NOT IN ('23033', '24033', '32300', '32401')) AND (PP.Shipped <> 'Y' OR
-                      PP.Shipped IS NULL) AND (OL.shipped_dt IS NULL) AND (NOT (OH.user_def_fld_5 IN ('', 'TEST'))) AND (NOT (OH.user_def_fld_5 IS NULL)) AND (OL.loc NOT IN ('CAN', 
-                      'IN', 'BR', 'IT')) AND (INVWS.loc = 'WS')
-GROUP BY OH.entered_dt, AUD_DTS.aud_dt_min, AUD_LAST.aud_Dt, AUD_LAST.aud_action, AUD_LAST.user_name, AUD_DTS.aud_dt_max, OH.mfg_loc, OL.loc, 
-                      OH.shipping_dt, OH.ord_no, OH.cus_no, OH.ship_to_name, OH.ship_to_addr_2, OH.ship_to_addr_4, OL.qty_ordered, OL.item_no, CMT.line_seq_no, 
-                      OH.ship_instruction_1, OH.ship_instruction_2, IM.prod_cat, OL.line_no, OL.item_desc_1, OL.item_desc_2, IM.drawing_release_no, IM.drawing_revision_no, 
-                      BM.qty_per_par, OL.qty_ordered, BM.comp_item_no, BM.seq_no, OL.unit_price, OH.oe_po_no, IM.item_note_3, OH.ord_dt, OL.picked_dt, OL.ord_type, OH.slspsn_no, 
-                      OH.ship_via_cd, INV.qty_on_hand, INVWS.qty_on_hand, INVFW.qty_on_hand
+WHERE     (OH.ord_type = 'O') AND (LTRIM(OH.cus_no) NOT IN ('23033', '24033', '32300')) 
+			AND (PP.Shipped <> 'Y' OR PP.Shipped IS NULL) 
+			AND (OL.shipped_dt IS NULL) 
+			AND (NOT (OH.user_def_fld_5 IN ('', 'TEST'))) 
+			AND (NOT (OH.user_def_fld_5 IS NULL)) 
+			AND (OL.loc NOT IN ('CAN','IN', 'BR', 'IT')) AND (INVWS.loc = 'WS')
+GROUP BY OH.entered_dt, AUD_DTS.aud_dt_min, AUD_LAST.aud_Dt, AUD_LAST.aud_action, AUD_LAST.user_name, AUD_DTS.aud_dt_max, 
+		OH.mfg_loc, OL.loc, OH.shipping_dt, OH.ord_no, OH.cus_no, OH.ship_to_name, OH.ship_to_addr_2, OH.ship_to_addr_4, 
+		OL.qty_ordered, OL.item_no, CMT.line_seq_no, OH.ship_instruction_1, OH.ship_instruction_2, IM.prod_cat, OL.line_no, 
+		OL.item_desc_1, OL.item_desc_2, IM.drawing_release_no, IM.drawing_revision_no, BM.qty_per_par, OL.qty_ordered, 
+		BM.comp_item_no, BM.seq_no, OL.unit_price, OH.oe_po_no, IM.item_note_3, OH.ord_dt, OL.picked_dt, OL.ord_type, 
+		OH.slspsn_no, OH.ship_via_cd, INV.qty_on_hand, INVWS.qty_on_hand, INVFW.qty_on_hand

@@ -1,4 +1,4 @@
-ALTER VIEW Z_IMINVLOC_QALL AS
+ALTER VIEW Z_IMINVLOC_QALL_WITH_LEVELS AS
 /*Last Change: Excluded KPB items sold to Infiniti(22523)*/ 
 SELECT [Parent Item] AS [item_no], SUM(qty_to_ship) AS [qty_allocated], 'PARENT' AS [Level], 
                       [Parent Item] AS [Parent Item]

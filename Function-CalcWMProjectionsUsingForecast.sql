@@ -98,7 +98,7 @@ BEGIN
 											WHERE BM.comp_item_no = @item
 					) AS Temp)
 	END
-	*/
+	
 	IF @currentmonth = 8 BEGIN
 		SET @proj = (SELECT SUM(Current_Proj) AS Current_Proj
 					FROM (
@@ -116,7 +116,7 @@ BEGIN
 											GROUP BY BM.qty_per_par
 					) AS Temp)
 	END
-	
+	*/
 	IF @currentmonth = 9 BEGIN
 		SET @proj = (SELECT SUM(Current_Proj) AS Current_Proj
 					FROM (
@@ -127,7 +127,7 @@ BEGIN
 							
 						UNION ALL
 
-						SELECT SUM([Oct 2013] + [Sep 2013] + [Nov 2013] + [Aug 2013]) * BM.qty_per_par AS Current_Proj
+						SELECT SUM([Oct 2013] + [Sep 2013] + [Nov 2013] + [Dec 2013]) * BM.qty_per_par AS Current_Proj
 											FROM WM_Forecast_2013 JOIN dbo.edcitmfl_sql EdiIM ON EdiIM.edi_item_num = dbo.WM_Forecast_2013.[Article Number]
 																  LEFT OUTER JOIN dbo.bmprdstr_sql BM ON BM.item_no = EdiIM.mac_item_num
 											WHERE BM.comp_item_no = @item
@@ -145,7 +145,7 @@ BEGIN
 							
 						UNION ALL
 
-						SELECT SUM([Oct 2013] + [Sep 2013] + [Nov 2013] + [Aug 2013]) * BM.qty_per_par AS Current_Proj
+						SELECT SUM([Oct 2013] + [Jan 2014] + [Nov 2013] + [Dec 2013]) * BM.qty_per_par AS Current_Proj
 											FROM WM_Forecast_2013 JOIN dbo.edcitmfl_sql EdiIM ON EdiIM.edi_item_num = dbo.WM_Forecast_2013.[Article Number]
 																  LEFT OUTER JOIN dbo.bmprdstr_sql BM ON BM.item_no = EdiIM.mac_item_num
 											WHERE BM.comp_item_no = @item
@@ -163,7 +163,7 @@ BEGIN
 							
 						UNION ALL
 
-						SELECT SUM([Oct 2013] + [Sep 2013] + [Nov 2013] + [Aug 2013]) * BM.qty_per_par AS Current_Proj
+						SELECT SUM([Feb 2014] + [Jan 2014] + [Nov 2013] + [Dec 2013]) * BM.qty_per_par AS Current_Proj
 											FROM WM_Forecast_2013 JOIN dbo.edcitmfl_sql EdiIM ON EdiIM.edi_item_num = dbo.WM_Forecast_2013.[Article Number]
 																  LEFT OUTER JOIN dbo.bmprdstr_sql BM ON BM.item_no = EdiIM.mac_item_num
 											WHERE BM.comp_item_no = @item
@@ -181,7 +181,7 @@ BEGIN
 							
 						UNION ALL
 
-						SELECT SUM([Oct 2013] + [Sep 2013] + [Nov 2013] + [Aug 2013]) * BM.qty_per_par AS Current_Proj
+						SELECT SUM([Feb 2014] + [Jan 2014] + [Dec 2013] + [Mar 2014]) * BM.qty_per_par AS Current_Proj
 											FROM WM_Forecast_2013 JOIN dbo.edcitmfl_sql EdiIM ON EdiIM.edi_item_num = dbo.WM_Forecast_2013.[Article Number]
 																  LEFT OUTER JOIN dbo.bmprdstr_sql BM ON BM.item_no = EdiIM.mac_item_num
 											WHERE BM.comp_item_no = @item

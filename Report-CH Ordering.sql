@@ -1,5 +1,5 @@
 --Created:	02/01/11	 By:	BG
---Last Updated:	8/29/13	 By:	BG
+--Last Updated:	9/4/13	 By:	BG
 --Purpose: Original China Ordering Report For DLC
 --Last Change:  Added logic of using the greater of ESS, WM-Forecast, and Projections.
 
@@ -9,7 +9,7 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-ALTER VIEW [dbo].[BG_Daily_CH_Order_Report] AS
+--ALTER VIEW [dbo].[BG_Daily_CH_Order_Report] AS
 SELECT TOP (100) PERCENT '___' AS LN, 
 		Z_IMINVLOC.prod_cat AS Cat,  
 		Z_IMINVLOC.item_no, IMITMIDX_SQL.item_desc_1, IMITMIDX_SQL.item_desc_2, 
