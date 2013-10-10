@@ -12,7 +12,6 @@ SELECT DISTINCT TOP 100 PERCENT  Item, ItemDesc1, ItemDesc2, [PO/SLS], [SHP OR R
 		usage_ytd, 
 		[ParentFlag] AS [P/S/C Fg],
 		'' AS [NC], IM.item_note_5 AS n5
-
 FROM  dbo.imitmidx_sql IM JOIN
 	(
 	SELECT IM2.item_no AS Item, IM2.item_desc_1 AS ItemDesc1, IM2.item_desc_2 AS ItemDesc2, 'QOH' AS [PO/SLS], 
@@ -38,7 +37,7 @@ FROM  dbo.imitmidx_sql IM JOIN
 	UNION ALL
 	--QOH for BOM items that don't pull on the query above
 	SELECT  BMIM.item_no AS Item, BMIM.item_desc_1 AS ItemDesc1, BMIM.item_desc_2 AS ItemDesc2, 'QOH' AS [PO/SLS], 
-			'01/01/2013' AS [SHP OR RECV DT],0 AS [QTY (QOH/QTY SLS/QTY REC)], '' AS [PROJ QOH], 
+			'01/01/2013' AS [SHP OR RECV DT],78 AS [QTY (QOH/QTY SLS/QTY REC)], '' AS [PROJ QOH], 
 			'QOH' AS ORD#, 'QOH' AS [VEND/CUS], 'QOH' AS [ORD DT],'QOH' AS CONTAINER, 'QOH' AS [CONT. SHP TO], 'QOH' AS [XFER TO], BMIM.prod_cat AS [PROD CAT], 
 			NULL AS [CUS#/VEND#], BMIM.item_note_1 AS CH,'QOH' AS STORE, 'QOH' AS [PARENT ITEM (ONLY ON SALES)], BMIM.item_note_4 AS ESS, 
 			BMIM.extra_10 AS usage_ytd, '' AS [OrdType2], BMIM.extra_1 AS 'ParentFlag', BMIM.item_note_5
@@ -163,5 +162,7 @@ FROM  dbo.imitmidx_sql IM JOIN
 					--Expand the list to include china prod cat items even if not purchased last year
 					--AND (PURCH_LAST_YR.item_no IS NOT NULL OR (IM2.prod_cat LIKE '3%') OR IM2.item_note_1 = 'CH')
 	) AS HolyGrail ON IM.item_no = HolyGrail.Item
-WHERE [Item] IN ('DRY-SHF 03 BV','DRY-SHF 04 BV','DRY-SHF 05 BV','DRY-SHF 06 BV','DRY-SHF LOW01BV','DRY-SHF LOW02BV','DRY-SHF LOW03BV','DRY-SHF LOW04BV','OBP-BAN008OBV97') OR [Item] IN (SELECT comp_item_no FROM dbo.bmprdstr_sql WHERE item_no IN ('DRY-SHF 03 BV','DRY-SHF 04 BV','DRY-SHF 05 BV','DRY-SHF 06 BV','DRY-SHF LOW01BV','DRY-SHF LOW02BV','DRY-SHF LOW03BV','DRY-SHF LOW04BV','OBP-BAN008OBV97'))
+WHERE ([Item] IN ('Met-brd bv') 
+	OR [Item] IN (SELECT comp_item_no FROM dbo.bmprdstr_sql WHERE item_no IN ('Met-brd bv')))
+	--AND YEAR([SHP OR RECV DT]) = 2013
 ORDER BY Item, [SHP OR RECV DT]

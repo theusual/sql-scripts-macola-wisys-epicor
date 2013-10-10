@@ -1,9 +1,12 @@
 --ALTER VIEW BG_WMPO AS
 
 --Created:	4/27/10			     By:	BG
---Last Updated:	08/15/13	     By:	BG
+--Last Updated:	09/23/13	     By:	BG
 --Purpose:	View for WM PO tracking
---Last changes: 0) Added completely fake line script at bottom  1a)  Added old PO Num  1) Added qty_to_ship > 0 to where clause in shipping acknowledgements, and added temp table that calc's a sum of qty shipped per item per load # and puts that info in the qty shipped column 2) Fixed ship_instruction_1 in where clause to include NULL values
+--Last changes: 0) Added completely fake line script at bottom  1a)  Added old PO Num  
+--				1) Added qty_to_ship > 0 to where clause in shipping acknowledgements, and added temp table that calc's a sum of 
+--					qty shipped per item per load # and puts that info in the qty shipped column 2) Fixed ship_instruction_1 in where clause to include NULL values
+--				2) Removed distro PO #32205716
 
 
 /***********************************************************************/
@@ -76,6 +79,9 @@ WHERE ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000') AND OH.oe_po_no > 
                AND isnumeric(cus_alt_adr_cd) = 1 
                AND isnumeric(oe_po_no) = 1 
                AND qty_to_ship > 0 
+			   --Exclude bad orders
+			   AND NOT (OH.oe_po_no IN ('32205716') AND OH.ord_no like '  8%')
+
                AND (NOT(OH.ship_instruction_1 LIKE '%REPLA%') OR OH.ship_instruction_1 IS NULL)
                AND (NOT(OH.user_def_Fld_3 LIKE '%RP%') OR OH.user_def_fld_3 IS NULL)
                AND (NOT(OH.user_def_Fld_4 LIKE '%RP%') OR OH.user_def_fld_4 IS NULL)
@@ -205,7 +211,8 @@ WHERE (ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000')
        --Line added 3/6/13: Exclude line items with a qty to ship of 0
        -- AND qty_to_ship > 0
        --Exclude fucked up orders with duplicate line numbers
-       AND NOT (OH.ord_no = '  701266' AND OL.id = '683182')             
+       AND NOT (OH.ord_no = '  701266' AND OL.id = '683182')       
+	   AND NOT (OH.oe_po_no IN ('32205716') AND OH.ord_no like '  8%')     
        --Exclude CR
        AND (OL.prod_cat NOT IN ('2', '036', '037','102','336') OR LTRIM(OH.ord_no) IN ('697190','695496','696754','696650','695878','695530','696173','696547','696924','697354','695686','696661','696046','692044','695535','696809',' 695736','695632','695490','696480','696456','696370','697823','691111','697064','692430','696045','695110','696856','695633'))
        --Test Order
@@ -265,6 +272,9 @@ WHERE ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000') AND OH.oe_po_no > 
                AND NOT shipping_dt IS NULL  
                AND LEN(cus_alt_adr_cd) < 11 
                AND isnumeric(oe_po_no) = 1
+			   --Exclude bad orders
+			   AND NOT (OH.oe_po_no IN ('32205716') AND OH.ord_no like '  8%')
+
                AND OL.shipped_dt IS NULL 
                AND (NOT(OH.ship_instruction_1 LIKE '%REPLA%') OR OH.ship_instruction_1 IS NULL)
                AND (NOT(OH.user_def_Fld_3 LIKE '%RP%') OR OH.user_def_fld_3 IS NULL)

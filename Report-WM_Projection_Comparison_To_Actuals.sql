@@ -8,7 +8,7 @@ SET @Month = DATENAME(MONTH,DATEADD(MONTH,@MonthsBack,GETDATE()))
 SELECT @Month
 
 SELECT     DISTINCT TOP (100) PERCENT QtyOrd.item_no , EDI.edi_item_num AS SAP#, IM.item_desc_1, IM.item_desc_2, INV.qty_on_hand AS QOH, 
-			QtyOrd.QtyOrd AS [QtyOrd], Forecast.[Aug 2013] AS [Forecast], (Forecast.[Aug 2013] - QtyOrd.QtyOrd) AS [DIFF], 
+			QtyOrd.QtyOrd AS [QtyOrd], Forecast.[Sep 2013] AS [Forecast], (Forecast.[Sep 2013] - QtyOrd.QtyOrd) AS [DIFF], 
 			CASE WHEN Forecast.[Sep 2013] IS NULL THEN 'N' ELSE 'Y' END AS [On Forecast?]
 FROM         (
 				SELECT SUM(QtyOrd) AS QtyOrd, item_no
@@ -55,6 +55,8 @@ FROM         (
 						  AND OH.user_def_fld_3 NOT LIKE '%FR%'
 						  --Exclude CapEx
 						  AND OH.user_def_fld_3 NOT LIKE '%CAPEX%'
+						  --Exclude Projections
+
 					GROUP BY item_no
 					) AS Tot
 				GROUP BY item_no
@@ -65,11 +67,11 @@ FROM         (
 									 --SUM([May 2013]) AS [May 2013], 
 									 --SUM([Jun 2013]) AS [Jun 2013], 
 									 --SUM([Jul 2013]) AS [Jul 2013], 
-									   SUM([Aug 2013]) AS [Aug 2013], 
+									 --  SUM([Aug 2013]) AS [Aug 2013], 
 									   SUM([Sep 2013]) AS [Sep 2013], 
 									   SUM([Oct 2013]) AS [Oct 2013],
 									   [Article Number]
-							   FROM  dbo.WM_Forecast_2013_August AS Forecast 
+							   FROM  dbo.WM_Forecast_2013_September AS Forecast 
 							   GROUP BY [Article Number]
 							   ) AS Forecast ON Forecast.[Article Number] =  CAST(EDI.edi_item_num AS VARCHAR)
 			 JOIN Z_IMINVLOC INV ON INV.item_no = QtyOrd.item_no
@@ -77,7 +79,12 @@ FROM         (
 --GROUP BY Tot.item_no, Tot.cus_item_no, INV.qty_on_hand, QtyOrd.QtyOrd, Forecast.[Jun 2013], [Sep 2013]
 ORDER BY QtyOrd.item_no DESC
 
-SELECT * FROM dbo.WM_Forecast_2013_August WHERE [Article Number] = '100038198'
+--To check numbers:
+SELECT * FROM dbo.WM_Forecast_2013_September WHERE [Article Number] = '100038198'
+
+SELECT * 
+FROM oehdrhst_sql OH JOIN oelinhst_sql OL ON OH.inv_no = OL.inv_no 
+WHERE [item_no] = '58685-2 BK'  AND entered_dt > '09/01/2013'              
 
 
 

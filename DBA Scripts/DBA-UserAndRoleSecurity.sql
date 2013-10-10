@@ -4,7 +4,7 @@ CREATE ROLE [Purchasing]
 GO
 GRANT UPDATE ON [001].dbo.[BG_PO_CH_VENDOR_VIEW-OTHERS] TO [Purchasing]
 GO
-EXEC sp_addrolemember N'Purchasing', N'MARCO\knovick'
+EXEC sp_addrolemember N'Purchasing', N'MARCO\tkennedy'
 GO
 
 --Test role as that user
