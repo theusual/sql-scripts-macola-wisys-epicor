@@ -1,12 +1,20 @@
-USE [060]
+--ALTER VIEW BG_MASTER_SCHEDULE AS 
 
+--Created:	02/01/11	 By:	BG
+--Last Updated:	10/11/13	 By:	BG
+--Purpose:	View for refeshable master schedule
+--Last Change:  Added order #
+--TODO: fix level 4 and 5 calculations for non-eaches
 
-select '1' AS LEVEL, OL.item_no AS [ITEM], 
+SELECT TOP 100 PERCENT *
+FROM (
+/*
+select '1' AS LEVEL, OH.ord_no AS [ORDER#],OL.item_no AS [ITEM], 
 		rtrim(OL.item_no) AS RUN,
-		CASE WHEN OL.item_desc_2 is null
-			 THEN rtrim(OL.item_desc_1)
-			 ELSE rtrim(OL.item_desc_1)+'--'+rtrim(OL.item_desc_2) 
-		 END AS [ITEM DESC], 
+		IM.item_note_1 AS COLOR,
+		rtrim(IM.item_desc_1) AS [ITEM DESC],
+		rtrim(IM.item_desc_2) AS [SPECS],
+		IM.drawing
 		 OL.qty_to_ship AS [ITEM QTY],	
 		  '00' AS QPP,
 		  00 AS QTY,
@@ -22,16 +30,16 @@ WHERE OH.ord_no = '99999999' AND OH.ord_Type = 'O'
 	AND OL.qty_to_ship > 0
 
 UNION ALL
-
-select '2' AS LEVEL, IM.item_no AS [ITEM], 
+*/
+select '2' AS LEVEL, OH.ord_no AS [ORDER#], IM.item_no AS [ITEM], 
 		rtrim(OL.item_no) AS RUN,
-		CASE WHEN IM.item_desc_2 is null
-			 THEN rtrim(IM.item_desc_1)
-			 ELSE rtrim(IM.item_desc_1)+'--'+rtrim(IM.item_desc_2) 
-		 END AS [ITEM DESC], 
+		IM.item_note_1 AS COLOR,
+		rtrim(IM.item_desc_1) AS [ITEM DESC],
+		rtrim(IM.item_desc_2) AS [SPECS],
+		IM.drawing_release_no + '-'+IM.drawing_revision_no AS [DWG#],
 		 (OL.qty_to_ship*BM1.qty_per) AS [ITEM QTY],
 		 BM1.qty_per AS QPP,	
-		 (OL.qty_to_ship*BM1.qty_per) AS QTY,
+		 BM1.qty AS QTY,
 		 CASE WHEN BM1.attach_oper_no >= 1000
 			  THEN CAST(FLOOR(BM1.attach_oper_no/1000) AS VARCHAR)
 			  WHEN BM1.attach_oper_no >= 100 
@@ -51,7 +59,8 @@ select '2' AS LEVEL, IM.item_no AS [ITEM],
 			  WHEN BM1.attach_oper_no >= 1
 			  THEN '--'
 			  ELSE '--'
-		 END AS [WORK FLOW]
+		 END AS [WORK FLOW],
+		 BM1.SEQ_NO
 		 /*
 		 CASE WHEN BM1.attach_oper_no >= 1000
 			  THEN CAST(((BM1.attach_oper_no/10) % 10) AS VARCHAR)
@@ -76,208 +85,213 @@ select '2' AS LEVEL, IM.item_no AS [ITEM],
 		 */
 FROM  oeordlin_sql AS OL 
 		JOIN OEORDHDR_SQL AS OH ON OH.ord_no = OL.ord_no AND OH.ord_type = OL.ord_type
-		JOIN IMORDBLD_SQL BM1 ON BM1.item_no = OL.item_no 
+		JOIN IMORDBLD_SQL BM1 ON BM1.line_no = OL.line_no AND BM1.ord_no = OH.ord_no  AND BM1.ord_type = OH.ord_type
 		JOIN IMITMIDX_SQL IM ON IM.item_no = BM1.item_no
 WHERE OH.ord_no = '99999999' AND OH.ord_Type = 'O'
 	AND OL.qty_to_ship > 0
 	AND BM1.qty_per > 0
+	AND lvl_no = 1
 
 UNION ALL
 
-select '3' AS LEVEL, IM.item_no AS [ITEM], 
+select '3' AS LEVEL, OH.ord_no AS [ORDER#], IM.item_no AS [ITEM], 
 		rtrim(OL.item_no) AS RUN,
-		CASE WHEN IM.item_desc_2 is null
-			 THEN rtrim(IM.item_desc_1)
-			 ELSE rtrim(IM.item_desc_1)+'--'+rtrim(IM.item_desc_2) 
-		 END AS [ITEM DESC], 
-		 (OL.qty_to_ship*BM1.qty_per_par*BM2.qty_per_par) AS [ITEM QTY],
-		 BM2.qty_per_par AS QPP,	
-		 CASE WHEN BM2.mfg_uom = 'EA'
-			  THEN (OL.qty_to_ship*BM1.qty_per_par*BM2.qty_per_par)
-			  ELSE ((OL.qty_to_ship*BM1.qty_per_par*BM2.qty_per_par) / BM2.qty_per_par) 
+		IM.item_note_1 AS COLOR,
+		rtrim(IM.item_desc_1) AS [ITEM DESC],
+		rtrim(IM.item_desc_2) AS [SPECS], 
+		IM.drawing_release_no + '-'+IM.drawing_revision_no AS [DWG#],
+		 (OL.qty_to_ship*BM1.qty_per) AS [ITEM QTY],
+		 BM1.qty_per AS QPP,	
+		 CASE WHEN BM1.mfg_uom = 'EA'
+			  THEN BM1.qty
+			  ELSE (BM1.qty) / (BM1.qty_per / BM2.qty_per)
 		 END AS QTY,
-		 CASE WHEN BM2.attach_oper_no >= 1000
-			  THEN CAST(FLOOR(BM2.attach_oper_no/1000) AS VARCHAR)
-			  WHEN BM2.attach_oper_no >= 100 
-			  THEN CAST(FLOOR(BM2.attach_oper_no/100) AS VARCHAR)
-			  WHEN BM2.attach_oper_no >= 10
-			  THEN CAST(FLOOR(BM2.attach_oper_no/10) AS VARCHAR)
-			  WHEN BM2.attach_oper_no >= 1
-			  THEN CAST(FLOOR(BM2.attach_oper_no) AS VARCHAR)
+		 CASE WHEN BM1.attach_oper_no >= 1000
+			  THEN CAST(FLOOR(BM1.attach_oper_no/1000) AS VARCHAR)
+			  WHEN BM1.attach_oper_no >= 100 
+			  THEN CAST(FLOOR(BM1.attach_oper_no/100) AS VARCHAR)
+			  WHEN BM1.attach_oper_no >= 10
+			  THEN CAST(FLOOR(BM1.attach_oper_no/10) AS VARCHAR)
+			  WHEN BM1.attach_oper_no >= 1
+			  THEN CAST(FLOOR(BM1.attach_oper_no) AS VARCHAR)
 			  ELSE '--'
 		 END AS [ORIGIN],
-		 CASE WHEN BM2.attach_oper_no >= 1000
-			  THEN CAST(((BM2.attach_oper_no/100) % 10) AS VARCHAR)
-			  WHEN BM2.attach_oper_no >= 100
-			  THEN CAST(((BM2.attach_oper_no/10) % 10) AS VARCHAR)
-			  WHEN BM2.attach_oper_no >= 10
-			  THEN CAST((BM2.attach_oper_no % 10) AS VARCHAR)
-			  WHEN BM2.attach_oper_no >= 1
+		 CASE WHEN BM1.attach_oper_no >= 1000
+			  THEN CAST(((BM1.attach_oper_no/100) % 10) AS VARCHAR)
+			  WHEN BM1.attach_oper_no >= 100
+			  THEN CAST(((BM1.attach_oper_no/10) % 10) AS VARCHAR)
+			  WHEN BM1.attach_oper_no >= 10
+			  THEN CAST((BM1.attach_oper_no % 10) AS VARCHAR)
+			  WHEN BM1.attach_oper_no >= 1
 			  THEN '--'
 			  ELSE '--'
-		 END AS [WORK FLOW]
+		 END AS [WORK FLOW],
+		 BM1.SEQ_NO
 		 /*
-		 CASE WHEN BM2.attach_oper_no >= 1000
-			  THEN CAST(((BM2.attach_oper_no/10) % 10) AS VARCHAR)
-			  WHEN BM2.attach_oper_no >= 100
-			  THEN CAST(((BM2.attach_oper_no) % 10) AS VARCHAR)
-			  WHEN BM2.attach_oper_no >= 10
+		 CASE WHEN BM1.attach_oper_no >= 1000
+			  THEN CAST(((BM1.attach_oper_no/10) % 10) AS VARCHAR)
+			  WHEN BM1.attach_oper_no >= 100
+			  THEN CAST(((BM1.attach_oper_no) % 10) AS VARCHAR)
+			  WHEN BM1.attach_oper_no >= 10
 			  THEN '--'
-			  WHEN BM2.attach_oper_no >= 1
+			  WHEN BM1.attach_oper_no >= 1
 			  THEN '--'
 			  ELSE '--'
 		 END AS [WORK FLOW 3],
-		 CASE WHEN BM2.attach_oper_no >= 1000
-			  THEN CAST(((BM2.attach_oper_no) % 10) AS VARCHAR)
-			  WHEN BM2.attach_oper_no >= 100
+		 CASE WHEN BM1.attach_oper_no >= 1000
+			  THEN CAST(((BM1.attach_oper_no) % 10) AS VARCHAR)
+			  WHEN BM1.attach_oper_no >= 100
 			  THEN '--'
-			  WHEN BM2.attach_oper_no >= 10
+			  WHEN BM1.attach_oper_no >= 10
 			  THEN '--'
-			  WHEN BM2.attach_oper_no >= 1
+			  WHEN BM1.attach_oper_no >= 1
 			  THEN '--'
 			  ELSE '--'
 		 END AS [WORK FLOW 4]
 		 */
 FROM  oeordlin_sql AS OL 
 		JOIN OEORDHDR_SQL AS OH ON OH.ord_no = OL.ord_no AND OH.ord_type = OL.ord_type
-		JOIN BMPRDSTR_SQL BM1 ON BM1.item_no = OL.item_no 
-		JOIN IMITMIDX_SQL IM ON IM.item_no = BM2.comp_item_no
+		JOIN IMORDBLD_SQL BM1 ON BM1.line_no = OL.line_no AND BM1.ord_no = OH.ord_no  AND BM1.ord_type = OH.ord_type
+		JOIN IMORDBLD_SQL BM2 ON BM2.item_no = BM1.par_item_no AND BM2.ord_no = BM1.ord_no  AND BM2.ord_type = BM1.ord_type AND BM2.lvl_no = 1 AND BM2.line_no = BM1.line_no
+		JOIN IMITMIDX_SQL IM ON IM.item_no = BM1.item_no
 WHERE OH.ord_no = '99999999' AND OH.ord_Type = 'O' 
 	AND OL.qty_to_ship > 0
-	AND BM1.qty_per_par > 0
-	AND BM2.qty_per_par > 0
+	AND BM1.qty_per > 0
+	AND BM1.lvl_no = 2
+
 
 UNION ALL
 
-select '4' AS LEVEL, IM.item_no AS [ITEM], 
+select '4' AS LEVEL, OH.ord_no AS [ORDER#], IM.item_no AS [ITEM], 
 		rtrim(OL.item_no) AS RUN,
-		CASE WHEN IM.item_desc_2 is null
-			 THEN rtrim(IM.item_desc_1)
-			 ELSE rtrim(IM.item_desc_1)+'--'+rtrim(IM.item_desc_2) 
-		 END AS [ITEM DESC], 
-		 (OL.qty_to_ship*BM1.qty_per_par*BM2.qty_per_par*BM3.qty_per_par) AS [ITEM QTY],
-		 BM3.qty_per_par AS QPP,
-		 CASE WHEN BM3.mfg_uom = 'EA'
-			  THEN (OL.qty_to_ship*BM1.qty_per_par*BM2.qty_per_par*BM3.qty_per_par)
-			  ELSE ((OL.qty_to_ship*BM1.qty_per_par*BM2.qty_per_par*BM3.qty_per_par) / BM3.qty_per_par) 
+		IM.item_note_1 AS COLOR,
+		rtrim(IM.item_desc_1) AS [ITEM DESC],
+		rtrim(IM.item_desc_2) AS [SPECS],
+		IM.drawing_release_no + '-'+IM.drawing_revision_no AS [DWG#],
+		 BM1.qty AS [ITEM QTY],
+		 BM1.qty_per AS QPP,
+		 CASE WHEN BM1.mfg_uom = 'EA'
+			  THEN BM1.qty
+			  ELSE (BM1.qty) / (BM1.qty_per)
 		 END AS QTY,
-		 CASE WHEN BM3.attach_oper_no >= 1000
-			  THEN CAST(FLOOR(BM3.attach_oper_no/1000) AS VARCHAR)
-			  WHEN BM3.attach_oper_no >= 100 
-			  THEN CAST(FLOOR(BM3.attach_oper_no/100) AS VARCHAR)
-			  WHEN BM3.attach_oper_no >= 10
-			  THEN CAST(FLOOR(BM3.attach_oper_no/10) AS VARCHAR)
-			  WHEN BM3.attach_oper_no >= 1
-			  THEN CAST(FLOOR(BM3.attach_oper_no) AS VARCHAR)
+		 CASE WHEN BM1.attach_oper_no >= 1000
+			  THEN CAST(FLOOR(BM1.attach_oper_no/1000) AS VARCHAR)
+			  WHEN BM1.attach_oper_no >= 100 
+			  THEN CAST(FLOOR(BM1.attach_oper_no/100) AS VARCHAR)
+			  WHEN BM1.attach_oper_no >= 10
+			  THEN CAST(FLOOR(BM1.attach_oper_no/10) AS VARCHAR)
+			  WHEN BM1.attach_oper_no >= 1
+			  THEN CAST(FLOOR(BM1.attach_oper_no) AS VARCHAR)
 			  ELSE '--'
 		 END AS [ORIGIN],
-		 CASE WHEN BM3.attach_oper_no >= 1000
-			  THEN CAST(((BM3.attach_oper_no/100) % 10) AS VARCHAR)
-			  WHEN BM3.attach_oper_no >= 100
-			  THEN CAST(((BM3.attach_oper_no/10) % 10) AS VARCHAR)
-			  WHEN BM3.attach_oper_no >= 10
-			  THEN CAST((BM3.attach_oper_no % 10) AS VARCHAR)
-			  WHEN BM3.attach_oper_no >= 1
+		 CASE WHEN BM1.attach_oper_no >= 1000
+			  THEN CAST(((BM1.attach_oper_no/100) % 10) AS VARCHAR)
+			  WHEN BM1.attach_oper_no >= 100
+			  THEN CAST(((BM1.attach_oper_no/10) % 10) AS VARCHAR)
+			  WHEN BM1.attach_oper_no >= 10
+			  THEN CAST((BM1.attach_oper_no % 10) AS VARCHAR)
+			  WHEN BM1.attach_oper_no >= 1
 			  THEN '--'
 			  ELSE '--'
-		 END AS [WORK FLOW]
+		 END AS [WORK FLOW],
+		 BM1.SEQ_NO
 		 /*
-		 CASE WHEN BM3.attach_oper_no >= 1000
-			  THEN CAST(((BM3.attach_oper_no/10) % 10) AS VARCHAR)
-			  WHEN BM3.attach_oper_no >= 100
-			  THEN CAST(((BM3.attach_oper_no) % 10) AS VARCHAR)
-			  WHEN BM3.attach_oper_no >= 10
+		 CASE WHEN BM1.attach_oper_no >= 1000
+			  THEN CAST(((BM1.attach_oper_no/10) % 10) AS VARCHAR)
+			  WHEN BM1.attach_oper_no >= 100
+			  THEN CAST(((BM1.attach_oper_no) % 10) AS VARCHAR)
+			  WHEN BM1.attach_oper_no >= 10
 			  THEN '--'
-			  WHEN BM3.attach_oper_no >= 1
+			  WHEN BM1.attach_oper_no >= 1
 			  THEN '--'
 			  ELSE '--'
 		 END AS [WORK FLOW 3],
-		 CASE WHEN BM3.attach_oper_no >= 1000
-			  THEN CAST(((BM3.attach_oper_no) % 10) AS VARCHAR)
-			  WHEN BM3.attach_oper_no >= 100
+		 CASE WHEN BM1.attach_oper_no >= 1000
+			  THEN CAST(((BM1.attach_oper_no) % 10) AS VARCHAR)
+			  WHEN BM1.attach_oper_no >= 100
 			  THEN '--'
-			  WHEN BM3.attach_oper_no >= 10
+			  WHEN BM1.attach_oper_no >= 10
 			  THEN '--'
-			  WHEN BM3.attach_oper_no >= 1
+			  WHEN BM1.attach_oper_no >= 1
 			  THEN '--'
 			  ELSE '--'
 		 END AS [WORK FLOW 4]
 		*/
 FROM  oeordlin_sql AS OL 
 		JOIN OEORDHDR_SQL AS OH ON OH.ord_no = OL.ord_no AND OH.ord_type = OL.ord_type
-		JOIN BMPRDSTR_SQL BM1 ON BM1.item_no = OL.item_no 
-		JOIN BMPRDSTR_SQL BM2 ON BM2.item_no = BM1.comp_item_no 
-		JOIN BMPRDSTR_SQL BM3 ON BM3.item_no = BM2.comp_item_no 
-		JOIN IMITMIDX_SQL IM ON IM.item_no = BM3.comp_item_no
+		JOIN IMORDBLD_SQL BM1 ON BM1.line_no = OL.line_no AND BM1.ord_no = OH.ord_no  AND BM1.ord_type = OH.ord_type
+		--JOIN IMORDBLD_SQL BM2 ON BM2.item_no = BM1.par_item_no AND BM2.ord_no = BM1.ord_no  AND BM2.ord_type = BM1.ord_type AND BM2.lvl_no = 1 AND BM2.line_no = BM1.line_no
+		--JOIN IMORDBLD_SQL BM3 ON BM3.item_no = BM2.par_item_no AND BM3.ord_no = BM2.ord_no  AND BM3.ord_type = BM2.ord_type AND BM3.lvl_no = 2 AND BM3.line_no = BM2.line_no
+		JOIN IMITMIDX_SQL IM ON IM.item_no = BM1.item_no
 WHERE OH.ord_no = '99999999' AND OH.ord_Type = 'O' 
 	AND OL.qty_to_ship > 0
-	AND BM1.qty_per_par > 0
-	AND BM2.qty_per_par > 0
-	AND BM3.qty_per_par > 0
+	AND BM1.qty_per > 0
+	AND BM1.lvl_no = 3
 
 UNION ALL
 
-select '5' AS LEVEL, IM.item_no AS [ITEM], 
+select '5' AS LEVEL, OH.ord_no AS [ORDER#], IM.item_no AS [ITEM], 
 		rtrim(OL.item_no) AS RUN,
-		CASE WHEN IM.item_desc_2 is null
-			 THEN rtrim(IM.item_desc_1)
-			 ELSE rtrim(IM.item_desc_1)+'--'+rtrim(IM.item_desc_2) 
-		 END AS [ITEM DESC], 
-		 (OL.qty_to_ship*BM1.qty_per_par*BM2.qty_per_par*BM3.qty_per_par*BM4.qty_per_par) AS [ITEM QTY],
-		 BM4.qty_per_par AS QPP,
-		 ((OL.qty_to_ship*BM1.qty_per_par*BM2.qty_per_par*BM3.qty_per_par*BM4.qty_per_par) / BM4.qty_per_par) AS QTY,
-		 CASE WHEN BM4.attach_oper_no >= 1000
-			  THEN CAST(FLOOR(BM4.attach_oper_no/1000) AS VARCHAR)
-			  WHEN BM4.attach_oper_no >= 100 
-			  THEN CAST(FLOOR(BM4.attach_oper_no/100) AS VARCHAR)
-			  WHEN BM4.attach_oper_no >= 10
-			  THEN CAST(FLOOR(BM4.attach_oper_no/10) AS VARCHAR)
-			  WHEN BM4.attach_oper_no >= 1
-			  THEN CAST(FLOOR(BM4.attach_oper_no) AS VARCHAR)
+		IM.item_note_1 AS COLOR,
+		rtrim(IM.item_desc_1) AS [ITEM DESC],
+		rtrim(IM.item_desc_2) AS [SPECS],
+		IM.drawing_release_no + '-'+IM.drawing_revision_no AS [DWG#],
+		 (OL.qty_to_ship*BM1.qty_per) AS [ITEM QTY],
+		 BM1.qty_per AS QPP,
+		 CASE WHEN BM1.mfg_uom = 'EA'
+			  THEN BM1.qty
+			  ELSE BM1.qty_per
+		 END AS QTY,
+		 CASE WHEN BM1.attach_oper_no >= 1000
+			  THEN CAST(FLOOR(BM1.attach_oper_no/1000) AS VARCHAR)
+			  WHEN BM1.attach_oper_no >= 100 
+			  THEN CAST(FLOOR(BM1.attach_oper_no/100) AS VARCHAR)
+			  WHEN BM1.attach_oper_no >= 10
+			  THEN CAST(FLOOR(BM1.attach_oper_no/10) AS VARCHAR)
+			  WHEN BM1.attach_oper_no >= 1
+			  THEN CAST(FLOOR(BM1.attach_oper_no) AS VARCHAR)
 			  ELSE '--'
 		 END AS [ORIGIN],
-		 CASE WHEN BM4.attach_oper_no >= 1000
-			  THEN CAST(((BM4.attach_oper_no/100) % 10) AS VARCHAR)
-			  WHEN BM4.attach_oper_no >= 100
-			  THEN CAST(((BM4.attach_oper_no/10) % 10) AS VARCHAR)
-			  WHEN BM4.attach_oper_no >= 10
-			  THEN CAST((BM4.attach_oper_no % 10) AS VARCHAR)
-			  WHEN BM4.attach_oper_no >= 1
+		 CASE WHEN BM1.attach_oper_no >= 1000
+			  THEN CAST(((BM1.attach_oper_no/100) % 10) AS VARCHAR)
+			  WHEN BM1.attach_oper_no >= 100
+			  THEN CAST(((BM1.attach_oper_no/10) % 10) AS VARCHAR)
+			  WHEN BM1.attach_oper_no >= 10
+			  THEN CAST((BM1.attach_oper_no % 10) AS VARCHAR)
+			  WHEN BM1.attach_oper_no >= 1
 			  THEN '--'
 			  ELSE '--'
-		 END AS [WORK FLOW]
+		 END AS [WORK FLOW],
+		 BM1.SEQ_NO
 		 /*
-		 CASE WHEN BM4.attach_oper_no >= 1000
-			  THEN CAST(((BM4.attach_oper_no/10) % 10) AS VARCHAR)
-			  WHEN BM4.attach_oper_no >= 100
-			  THEN CAST(((BM4.attach_oper_no) % 10) AS VARCHAR)
-			  WHEN BM4.attach_oper_no >= 10
+		 CASE WHEN BM1.attach_oper_no >= 1000
+			  THEN CAST(((BM1.attach_oper_no/10) % 10) AS VARCHAR)
+			  WHEN BM1.attach_oper_no >= 100
+			  THEN CAST(((BM1.attach_oper_no) % 10) AS VARCHAR)
+			  WHEN BM1.attach_oper_no >= 10
 			  THEN '--'
-			  WHEN BM4.attach_oper_no >= 1
+			  WHEN BM1.attach_oper_no >= 1
 			  THEN '--'
 			  ELSE '--'
 		 END AS [WORK FLOW 3],
-		 CASE WHEN BM4.attach_oper_no >= 1000
-			  THEN CAST(((BM4.attach_oper_no) % 10) AS VARCHAR)
-			  WHEN BM4.attach_oper_no >= 100
+		 CASE WHEN BM1.attach_oper_no >= 1000
+			  THEN CAST(((BM1.attach_oper_no) % 10) AS VARCHAR)
+			  WHEN BM1.attach_oper_no >= 100
 			  THEN '--'
-			  WHEN BM4.attach_oper_no >= 10
+			  WHEN BM1.attach_oper_no >= 10
 			  THEN '--'
-			  WHEN BM4.attach_oper_no >= 1
+			  WHEN BM1.attach_oper_no >= 1
 			  THEN '--'
 			  ELSE '--'
 		 END AS [WORK FLOW 4]	
 		 */
 FROM  oeordlin_sql AS OL 
 		JOIN OEORDHDR_SQL AS OH ON OH.ord_no = OL.ord_no AND OH.ord_type = OL.ord_type
-		JOIN BMPRDSTR_SQL BM1 ON BM1.item_no = OL.item_no 
-		JOIN BMPRDSTR_SQL BM2 ON BM2.item_no = BM1.comp_item_no 
-		JOIN BMPRDSTR_SQL BM3 ON BM3.item_no = BM2.comp_item_no 
-		JOIN BMPRDSTR_SQL BM4 ON BM3.item_no = BM3.comp_item_no 
-		JOIN IMITMIDX_SQL IM ON IM.item_no = BM4.comp_item_no
+		JOIN IMORDBLD_SQL BM1 ON BM1.line_no = OL.line_no AND BM1.ord_no = OH.ord_no  AND BM1.ord_type = OH.ord_type
+		JOIN IMITMIDX_SQL IM ON IM.item_no = BM1.item_no
 WHERE OH.ord_no = '99999999' AND OH.ord_Type = 'O' 
 	AND OL.qty_to_ship > 0
-	AND BM1.qty_per_par > 0
-	AND BM2.qty_per_par > 0
-	AND BM3.qty_per_par > 0
-	AND BM4.qty_per_par > 0
+	AND BM1.qty_per > 0
+	AND lvl_no = 4
+	) AS TEMP
+ORDER BY LEVEL, SEQ_NO
