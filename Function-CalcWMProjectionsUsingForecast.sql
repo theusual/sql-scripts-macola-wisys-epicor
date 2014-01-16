@@ -1,6 +1,6 @@
 --Created By: BG
 --Created On: 3/8/13
---Updated On: 8/7/13
+--Updated On: 12/2/13
 --Purpose:  Calc WM projections using the WM forecasts that are imported into the database
 --Last Change:  Added Grouping, joined on EDI table, added BOM query
 
@@ -134,7 +134,7 @@ BEGIN
 											GROUP BY BM.qty_per_par
 					) AS Temp)
 	END
-	*/
+	
 	IF @currentmonth = 10 BEGIN
 		SET @proj = (SELECT SUM(Current_Proj) AS Current_Proj
 					FROM (
@@ -170,7 +170,7 @@ BEGIN
 											GROUP BY BM.qty_per_par
 					) AS Temp)
 	END
-	
+	*/
 	IF @currentmonth = 12 BEGIN
 		SET @proj = (SELECT SUM(Current_Proj) AS Current_Proj
 					FROM (

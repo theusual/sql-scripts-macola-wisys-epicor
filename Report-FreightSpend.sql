@@ -31,7 +31,8 @@ FROM     oehdrhst_sql OH LEFT OUTER JOIN
                [001].dbo.wsPikPak pp ON oh.ord_no = pp.ord_no LEFT OUTER JOIN
                [001].dbo.wsShipment ws ON ws.shipment = pp.shipment LEFT OUTER JOIN
                [001].dbo.oebolfil_sql BL ON BL.bol_no = ws.bol_no
-WHERE OH.inv_dt > '01/01/2012' AND NOT OH.ship_to_addr_2 LIKE 'PO BOX%'
-		AND (bol_pre_collect_fg = 'P' OR (frt_pay_cd = 'T' AND bol_pre_collect_fg IS NULL))
-		AND OH.ship_to_country = 'US'
+WHERE OH.inv_dt > '01/01/2013' AND NOT OH.ship_to_addr_2 LIKE 'PO BOX%'
+		AND (bol_pre_collect_fg IN ('P','C') OR (frt_pay_cd IN ('P','C') AND bol_pre_collect_fg IS NULL))
+		AND OH.ship_to_country = 'US' AND (PP.ParcelType = 'LTL' or PP.ParcelType is null)
 GROUP BY inv_no, carrier_cd, loc, frt_amt, OH.ship_to_addr_4, PP.ship_dt, OH.inv_dt, OH.cmt_3, OH.cmt_1, pp.ParcelType, OH.ship_via_cd, BL.ship_via_cd, OH.mfg_loc, OH.tot_sls_amt, cmt_1, cmt_2, cmt_3
+

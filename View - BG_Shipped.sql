@@ -1,19 +1,31 @@
---ALTER VIEW BG_SHIPPED AS
+ALTER VIEW BG_SHIPPED AS
 --Created:	4/27/10	 By:	BG
---Last Updated:	8/20/13	 By:	BG
+--Last Updated:	12/2/13	 By:	BG
 --Purpose:	Aggregate all recent shipments from all sources
 --Last changes: --
 
 /*Shipments processed in WISYS, already invoiced, join with OH history to gather updated tracking and carrier if available*/ 
 SELECT DISTINCT   OL.line_no, ltrim(oh.ord_no) AS Ord_No, CASE WHEN max(PP.ID) IS NULL THEN max(ol.id) ELSE max(pp.id) END AS [ID], 
                /*If order comments contain more than 1 tracking code or carrier code in comments contains typo (doesn't exist in database), then pull the shipping data from wisys, otherwise pull comment shipping data*/ 
-               CASE WHEN OH.cmt_1 LIKE '%,%' THEN (CASE WHEN PP.ParcelType = 'UPS' THEN 'UPG' WHEN PP.ParcelType = 'FedEx' THEN 'FXG'	
-					WHEN PP.parcelType IS NULL THEN (CASE WHEN bl.ship_via_cd IS NULL THEN OH.ship_via_cd ELSE bl.ship_via_cd END) END)						ELSE (CASE WHEN LEFT(OH.cmt_1, 3) IN
-						   (SELECT sy_code
-							FROM   sycdefil_sql WITH (NOLOCK)
-							WHERE cd_type = 'V') THEN LEFT(OH.cmt_1, 3) 
-					ELSE (CASE PP.ParcelType WHEN 'UPS' THEN 'UPG' WHEN 'FedEx' THEN 'FXG' ELSE (CASE WHEN bl.ship_via_cd IS NULL 
-               THEN OH.ship_via_cd ELSE bl.ship_via_cd END) END) END) END AS [Carrier_Cd], ol.Loc AS loc, '0.00' AS ship_cost, '0.00' AS total_cost, 
+               CASE WHEN OH.cmt_1 LIKE '%,%' THEN (CASE WHEN PP.ParcelType = 'UPS' THEN 'UPG' 
+														WHEN PP.ParcelType = 'FedEx' THEN 'FXG'	
+														WHEN PP.parcelType IS NULL THEN (CASE WHEN bl.ship_via_cd IS NULL THEN OH.ship_via_cd 
+																							  ELSE bl.ship_via_cd 
+																						END) 
+												   END)						
+					ELSE (CASE WHEN LEFT(OH.cmt_1, 3) IN
+								   (SELECT sy_code
+									FROM   sycdefil_sql WITH (NOLOCK)
+									WHERE cd_type = 'V') THEN LEFT(OH.cmt_1, 3) 
+							   ELSE (CASE PP.ParcelType WHEN 'UPS' THEN 'UPG' 
+														WHEN 'FedEx' THEN 'FXG' 
+														 ELSE (CASE WHEN bl.ship_via_cd IS NULL THEN OH.ship_via_cd 
+																	ELSE bl.ship_via_cd 
+																END) 
+									 END) 
+						 END) 
+				END AS [Carrier_Cd], 
+			   ol.Loc AS loc, '0.00' AS ship_cost, '0.00' AS total_cost, 
                /*Changed/Updated 8/14/12 to use pickpack tracking # first*/ 
                CASE WHEN (pp.trackingno = '' OR pp.TrackingNo IS NULL) THEN CASE WHEN OH.cmt_3 LIKE '%,%' THEN dbo.FindLastDelimited(',', cmt_3) WHEN LEN(OH.cmt_3) 
                > 3 THEN OH.cmt_3 ELSE CONVERT(VARCHAR, DAY(GETDATE())) + RIGHT('0' + CONVERT(VARCHAR, MONTH(GETDATE())), 2) + CONVERT(VARCHAR, 
@@ -30,13 +42,13 @@ FROM  oelinhst_sql OL WITH (NOLOCK) INNER JOIN
                [001].dbo.wsPikPak pp WITH (NOLOCK) ON ol.line_no = pp.line_no AND ol.ord_no = pp.ord_no LEFT OUTER JOIN
                [001].dbo.wsShipment ws WITH (NOLOCK) ON ws.shipment = pp.shipment  LEFT OUTER JOIN
                [001].dbo.oebolfil_sql BL WITH (NOLOCK) ON BL.bol_no = ws.bol_no
-WHERE ((CONVERT(varchar, CAST(rtrim(oh.inv_dt) AS datetime), 101) > DATEADD(day, - 85, GETDATE())) /*AND qty_to_ship > 0  */ 
+WHERE ((CONVERT(varchar, CAST(rtrim(oh.inv_dt) AS datetime), 101) > DATEADD(day, - 65, GETDATE())) /*AND qty_to_ship > 0  */ 
 				AND (pp.shipped = 'Y'))
 				AND pp.qty > 0
 				--TEST
-				--AND oh.ord_no = '  703477'  
+				--AND oh.ord_no = '  721419'
                /*Older orders*/ 
-               OR OH.oe_po_no IN ('31915613','32055458')
+               OR OH.oe_po_no IN ('32238272')
 GROUP BY OL.line_no, oh.ord_no, OL.item_no, oh.ship_via_cd, BL.ship_via_cd, pp.ParcelType, OL.loc, pp.TrackingNo, pp.weight, pp.ship_dt, 
 		OH.cmt_3, pp.Pallet, pp.Carton_UCC128, pp.Pallet_UCC128, OH.cmt_1, OH.inv_dt
 		
@@ -71,10 +83,15 @@ GROUP BY OL.line_no, pp.ord_no, OL.item_no, oh.ship_via_cd, BL.ship_via_cd, pp.P
 UNION ALL
 			
 --Shipments invoiced but not in wisys
-SELECT DISTINCT OL.line_no, ltrim(oh.ord_no) AS Ord_No, max(oh.id), 
-               CASE WHEN cmt_1 IS NULL THEN 'FXG' 
-					ELSE LEFT(cmt_1,3)  
-               END AS [Carrier_Cd], 
+SELECT DISTINCT OL.line_no, 
+				ltrim(oh.ord_no) AS Ord_No, 
+				max(oh.id), 
+                CASE WHEN LEFT(OH.cmt_1, 3) IN
+								   (SELECT sy_code
+									FROM   sycdefil_sql WITH (NOLOCK)
+									WHERE cd_type = 'V')  THEN LEFT(OH.cmt_1, 3) 
+					 ELSE 'MDD'
+					END AS [Carrier_Cd],  
                ol.Loc AS loc, 
                '0.00' AS ship_cost, 
                '0.00' AS total_cost, 
@@ -85,19 +102,23 @@ SELECT DISTINCT OL.line_no, ltrim(oh.ord_no) AS Ord_No, max(oh.id),
                ol.unit_weight AS [Ship_weight], 
                '' AS void_fg, 'P' AS complete_fg, 
                SUM(OL.qty_to_ship) AS Qty, 
-               CONVERT(varchar(10), OL.shipped_dt, 101) AS [ship_dt], 
+               CASE WHEN OL.shipped_dt IS NULL
+					THEN CONVERT(varchar(10),OH.inv_dt, 101)
+					ELSE CONVERT(varchar(10), OL.shipped_dt, 101) 
+			   END AS [ship_dt], 
                OL.item_no, 
                cmt_3 AS [cmt_3_tracking_no], 
                --updated 8/20/13:  changed to null so that the PO tracking upload will default to use OL.id to derive pallet ID
                null AS [Pallet/Carton ID]
 FROM  oelinhst_sql OL WITH (NOLOCK) INNER JOIN
                oehdrhst_sql OH WITH (NOLOCK) ON OH.ord_no = ol.ord_no 
-WHERE  (CONVERT(varchar, CAST(rtrim(OH.inv_dt) AS datetime), 101) > DATEADD(day, - 85, GETDATE())) 
+WHERE   ((CONVERT(varchar, CAST(rtrim(OH.inv_dt) AS datetime), 101) > DATEADD(day, - 85, GETDATE())) 
 		AND qty_to_ship > 0 
 		AND NOT ((OH.ord_no + OL.item_no) IN
                    (SELECT ord_no + item_no
                     FROM   wspikpak WITH (NOLOCK)                              
                     WHERE shipped = 'Y'))
-        AND LTRIM(OH.cus_no) = '1575'
+        AND LTRIM(OH.cus_no) = '1575' )
+		--AND OH.ord_no = '  132701'
 GROUP BY OL.line_no, oh.ord_no, OL.item_no, oh.ship_via_cd, OL.loc,OL.unit_weight, 
-			ol.shipped_dt, ol.item_no, OH.cmt_3, OH.cmt_1
+			ol.shipped_dt, ol.item_no, OH.cmt_3, OH.cmt_1, OH.inv_dt

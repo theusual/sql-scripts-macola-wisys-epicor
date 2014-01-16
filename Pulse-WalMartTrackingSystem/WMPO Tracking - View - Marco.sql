@@ -1,19 +1,20 @@
 --ALTER VIEW BG_WMPO AS
 
 --Created:	4/27/10			     By:	BG
---Last Updated:	09/23/13	     By:	BG
+--Last Updated:	12/2/13			 By:	BG
 --Purpose:	View for WM PO tracking
 --Last changes: 0) Added completely fake line script at bottom  1a)  Added old PO Num  
 --				1) Added qty_to_ship > 0 to where clause in shipping acknowledgements, and added temp table that calc's a sum of 
 --					qty shipped per item per load # and puts that info in the qty shipped column 2) Fixed ship_instruction_1 in where clause to include NULL values
 --				2) Removed distro PO #32205716
+--				3) Added store # to end of FTW Pro#'s
 
-
-/***********************************************************************/
+/*************************************/
 /*Open Order Shipping Acknowledgement*/
-/***********************************************************************/ 
+/*************************************/
 
-SELECT DISTINCT '838115' AS 'Supplier Acct Number', CAST(OH.oe_po_no AS int) AS 'Wal-Mart PO Number', 
+SELECT DISTINCT '838115' AS 'Supplier Acct Number', 
+				CAST(OH.oe_po_no AS int) AS 'Wal-Mart PO Number', 
                'Wal-Mart Store Number' = CASE WHEN OH.cus_alt_adr_cd = 'SCHWARZ' THEN '9560'
 											  WHEN len(OH.cus_alt_adr_cd) > 5 THEN OH.cus_alt_adr_cd 
 											  ELSE OH.cus_alt_adr_cd 
@@ -36,9 +37,14 @@ SELECT DISTINCT '838115' AS 'Supplier Acct Number', CAST(OH.oe_po_no AS int) AS 
 								   (SELECT rtrim(XX.code)
 									FROM   EDCSHVFL_SQL XX
 									WHERE OH.ship_via_cd = XX.mac_ship_via) 
+						WHEN XX.code = 'XYZ' THEN 'VENTK'
+						WHEN XX.code = 'MDD' THEN 'VENTK'
 						ELSE rtrim(XX.code) END, 
                'Pro Number or Load Number' = 
-				   CASE WHEN oh.ship_via_cd = 'XYZ' THEN rtrim(SH.tracking_no) + '-' + (REPLICATE('0',4 - LEN(OH.cus_alt_adr_cd)) + OH.cus_alt_adr_cd)
+				   CASE WHEN oh.ship_via_cd = 'XYZ' THEN ltrim(rtrim(SH.tracking_no)) + '-' + (REPLICATE('0',4 - LEN(OH.cus_alt_adr_cd)) + OH.cus_alt_adr_cd)
+						WHEN oh.ship_via_cd = 'FTW' THEN ltrim(rtrim(SH.tracking_no)) + '-' + (REPLICATE('0',4 - LEN(OH.cus_alt_adr_cd)) + OH.cus_alt_adr_cd)
+						WHEN oh.ship_via_cd = 'MDD' THEN ltrim(rtrim(SH.tracking_no)) + '-' + (REPLICATE('0',4 - LEN(OH.cus_alt_adr_cd)) + OH.cus_alt_adr_cd)
+						WHEN SH.tracking_no = '' THEN CAST(MONTH(GETDATE()) AS VARCHAR) + CAST(DAY(GETDATE()) AS VARCHAR) + CAST(YEAR(GETDATE()) AS VARCHAR)
 						ELSE RTRIM(SH.tracking_no) 
 				   END, 
                rtrim(cast(ltrim(OH.ord_no) AS CHAR)) AS 'Bill of Lading Number', 
@@ -52,8 +58,13 @@ SELECT DISTINCT '838115' AS 'Supplier Acct Number', CAST(OH.oe_po_no AS int) AS 
                'Container Type' = CASE substring(OL.item_no, 1, 2) WHEN 'SW' THEN 'BOX' ELSE 'PALLET' END, 'Container Number' = '', 
                'Quantity in Container' = CASE WHEN SH.qty IS NULL THEN rtrim(cast(cast(OL.qty_to_ship AS int) AS char)) 
                WHEN SH.qty > OL.qty_to_ship THEN rtrim(cast(cast(OL.qty_to_ship AS int) AS char)) ELSE rtrim(cast(cast(SH.qty AS int) AS char)) END, 
-               'Wal-Mart Item Part Number' = CASE WHEN OL.cus_item_no IS NULL AND rtrim(CI.cus_item_no) IS NULL THEN rtrim(OL.item_no) WHEN OL.cus_item_no IS NULL 
-               THEN rtrim(CI.cus_item_no) ELSE rtrim(OL.cus_item_no) END, rtrim(OL.item_no) AS 'Supplier Item Part Number', rtrim(replace(replace(replace(OL.item_desc_1, ',', 
+               'Wal-Mart Item Part Number' = CASE WHEN OL.cus_item_no IS NULL AND rtrim(CI.cus_item_no) IS NULL 
+												  THEN rtrim(OL.item_no) 
+												  WHEN OL.cus_item_no IS NULL 
+												  THEN rtrim(CI.cus_item_no) 
+												  ELSE rtrim(OL.cus_item_no) 
+											  END, 
+			   rtrim(OL.item_no) AS 'Supplier Item Part Number', rtrim(replace(replace(replace(OL.item_desc_1, ',', 
                ' '), '"', 'in'), '''', 'ft')) AS 'Supplier Item Part Number Description', '' AS 'Wal-Mart Component Part Number', '' AS 'Supplier Component Part Number', 
                '' AS 'Supplier Component Description', cast(OL.qty_ordered AS int) AS 'Supplier Quantity Ordered', 
                'Supplier Quantity Shipped' = cast(ShpSum.qty AS int), 
@@ -71,17 +82,20 @@ FROM  OEORDLIN_SQL OL WITH (NOLOCK) INNER JOIN
                FROM dbo.BG_SHIPPED WITH (NOLOCK)
                GROUP BY line_no, item_no, tracking_no, ord_no) AS ShpSum ON ShpSum.line_no = SH.line_no  
 					AND ShpSum.ord_no = SH.ord_no AND ShpSum.tracking_no = SH.tracking_no
-WHERE ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000') AND OH.oe_po_no > '0' AND OH.ord_type = 'O' AND NOT OL.item_no IN ('ADD ON', 'BACKORDER', 
+WHERE		   (ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000') AND OH.oe_po_no > '0' 
+				AND OH.ord_type = 'O' 
+				AND NOT OL.item_no IN ('ADD ON', 'BACKORDER', 
                'CAP EX', 'FIXTURE REQUEST', 'INITIAL DIV 01', 'INITIAL RM', 'INITIAL SC', 'INITIAL WNM', 'PROTOTYPE METAL', 'PROTOTYPE PLASTIC', 'PROTOTYPE WOOD', 
-               'REVIEW ITEM', 'SAMPLE') AND OH.oe_po_no IS NOT NULL AND NOT OH.cus_alt_adr_cd IS NULL AND NOT OH.ship_to_addr_2 LIKE 'PO BOX%' AND 
-               NOT shipping_dt IS NULL 
+               'REVIEW ITEM', 'SAMPLE','WAREHOUSE ITEM') 
+			   AND OH.oe_po_no IS NOT NULL 
+			   AND NOT OH.cus_alt_adr_cd IS NULL 
+			   AND NOT OH.ship_to_addr_2 LIKE 'PO BOX%' 
+               --AND  NOT shipping_dt IS NULL 
                AND OH.ship_to_addr_4 LIKE '%,%' 
                AND isnumeric(cus_alt_adr_cd) = 1 
                AND isnumeric(oe_po_no) = 1 
-               AND qty_to_ship > 0 
 			   --Exclude bad orders
 			   AND NOT (OH.oe_po_no IN ('32205716') AND OH.ord_no like '  8%')
-
                AND (NOT(OH.ship_instruction_1 LIKE '%REPLA%') OR OH.ship_instruction_1 IS NULL)
                AND (NOT(OH.user_def_Fld_3 LIKE '%RP%') OR OH.user_def_fld_3 IS NULL)
                AND (NOT(OH.user_def_Fld_4 LIKE '%RP%') OR OH.user_def_fld_4 IS NULL)
@@ -94,17 +108,17 @@ WHERE ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000') AND OH.oe_po_no > 
                   AND (OH.ord_no + OL.item_no) NOT IN ('  680261BAK-695 OBV-097', '  680102BAK-ARTBRDE 97', 
                '  680261OBP-1822BSOBV97', '  680524MDWM-0015 SB', '  680524MDWM-0002 SB', '  680524MDWM-0003 SB', '  680524MDWM-0001 SB', '  681451BAK-707 C OBV97', '  681451BAK-707EC OBV97', '  680451BAK-ARTBRDE 97', '  681591BAK-707EC OBV97', '  832531BAK-ARTBRDE 97')
                   --Exclude CR
-                  AND (OL.prod_cat NOT IN ('2', '036', '037','102','336') OR LTRIM(OH.ord_no) IN ('697190','695496','696754','696650','695878','695530','696173','696547','696924','697354','695686','696661','696046','692044','695535','696809',' 695736','695632','695490','696480','696456','696370','697823','691111','697064','692430','696045','695110','696856','695633'))
+                  --AND (OL.prod_cat NOT IN ('2', '036', '037','102','336') 
                --Line added 3/6/13: Exclude line items with a qty to ship of 0
-               AND qty_to_ship > 0
-               --Test Order
-               --AND OH.ord_no = '  703650'
-                  --Line removed on 2/10/11: Excluding open shipped orders entered more than 14 days ago affects backorder situations where new promise date needs to be transmitted
-                  --   AND SH.ship_dt > DATEADD(DAY, - 14, GETDATE())
+                 AND qty_to_ship > 0
+			   --Test Order
+			   --AND OH.ord_no = '  721789'
+			   )
+			   --OR OH.ord_no = '  132701'
                                  
-/***********************************************************************/
+/***************************************/
 /*Closed Order Shipping Acknowledgement*/
-/***********************************************************************/                  
+/***************************************/               
 
 UNION ALL
 
@@ -114,8 +128,11 @@ UNION ALL
 											  ELSE OH.cus_alt_adr_cd 
 										 END, 
                ltrim(OH.ord_no) AS 'Supplier Sales/Work Order Number', 
-               CASE WHEN OL.promise_dt IS NULL THEN CONVERT(varchar, DATEADD(day, + 5, OH.shipping_dt), 101) 
-               ELSE CONVERT(varchar, OL.promise_dt, 101) END AS 'Estimated Ship Date', CONVERT(varchar, CAST(rtrim(SH.ship_dt) AS datetime), 101) AS 'Actual Ship Date', 
+               CASE WHEN OL.promise_dt IS NOT NULL THEN CONVERT(varchar, OL.promise_dt, 101)
+			        WHEN OH.shipping_dt is null THEN CONVERT(varchar, DATEADD(day, + 4, OH.inv_dt), 101)
+					ELSE CONVERT(varchar, DATEADD(day, + 5, OH.shipping_dt), 101) 
+				END AS 'Estimated Ship Date', 
+			   CONVERT(varchar, CAST(rtrim(SH.ship_dt) AS datetime), 101) AS 'Actual Ship Date', 
                'Estimated Date of Arrival' = CONVERT(varchar, DATEADD(day, + 5, SH.ship_dt), 101), 
                'Ship To Name' = CASE WHEN (OH.ship_to_name LIKE 'HAYES%' OR OH.ship_to_name  LIKE 'SCHWARZ%' OR OH.ship_to_name LIKE '%HAYES%'  OR OH.ship_to_name LIKE '%SCHWARZ%') THEN 'CW' 
 									WHEN OH.cus_alt_adr_cd = '3P' THEN '3P'
@@ -129,10 +146,15 @@ UNION ALL
 								   (SELECT rtrim(XX.code)
 									FROM   EDCSHVFL_SQL XX
 									WHERE OH.ship_via_cd = XX.mac_ship_via) 
+						WHEN XX.code = 'XYZ' THEN 'VENTK'
+						WHEN XX.code = 'MDD' THEN 'VENTK'
 						ELSE rtrim(XX.code) END, 
                'Pro Number or Load Number' = 
-				   CASE WHEN oh.ship_via_cd = 'XYZ' THEN rtrim(SH.tracking_no) + '-' + (REPLICATE('0',4 - LEN(OH.cus_alt_adr_cd)) + OH.cus_alt_adr_cd)
-						ELSE RTRIM(SH.tracking_no) 
+				   CASE WHEN oh.ship_via_cd = 'XYZ' THEN ltrim(rtrim(SH.tracking_no)) + '-' + (REPLICATE('0',4 - LEN(OH.cus_alt_adr_cd)) + OH.cus_alt_adr_cd)
+						WHEN oh.ship_via_cd = 'FTW' THEN ltrim(rtrim(SH.tracking_no)) + '-' + (REPLICATE('0',4 - LEN(OH.cus_alt_adr_cd)) + OH.cus_alt_adr_cd)
+						WHEN oh.ship_via_cd = 'MDD' THEN ltrim(rtrim(SH.tracking_no)) + '-' + (REPLICATE('0',4 - LEN(OH.cus_alt_adr_cd)) + OH.cus_alt_adr_cd)
+						WHEN SH.tracking_no = '' THEN CAST(MONTH(GETDATE()) AS VARCHAR) + CAST(DAY(GETDATE()) AS VARCHAR) + CAST(YEAR(GETDATE()) AS VARCHAR)
+						ELSE LTRIM(RTRIM(SH.tracking_no)) 
 				   END, 
                rtrim(cast(ltrim(OH.ord_no) AS CHAR)) AS 'Bill of Lading Number', 
                'Pallet ID Number' = 
@@ -190,11 +212,11 @@ FROM  OELINHST_SQL OL  WITH (NOLOCK) INNER JOIN
 WHERE (ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000') 
 	   AND OH.oe_po_no > '0' AND OH.ord_type = 'O' 
 	   AND NOT OL.item_no IN ('ADD ON', 'BACKORDER', 'CAP EX', 'FIXTURE REQUEST', 'INITIAL DIV 01', 'INITIAL RM', 'INITIAL SC', 
-	   'INITIAL WNM', 'PROTOTYPE METAL', 'PROTOTYPE PLASTIC', 'PROTOTYPE WOOD','REVIEW ITEM', 'SAMPLE') 
+	   'INITIAL WNM', 'PROTOTYPE METAL', 'PROTOTYPE PLASTIC', 'PROTOTYPE WOOD','REVIEW ITEM', 'SAMPLE','WAREHOUSE ITEM')  
  	   AND OH.oe_po_no IS NOT NULL 
  	   AND NOT OH.cus_alt_adr_cd IS NULL 
  	   AND NOT OH.ship_to_addr_2 LIKE 'PO BOX%'  
-       AND NOT shipping_dt IS NULL 
+       --AND NOT shipping_dt IS NULL 
        AND OH.ship_to_addr_4 LIKE '%,%' 
        --AND isnumeric(cus_alt_adr_cd) = 1 
        AND isnumeric(oe_po_no) = 1 
@@ -207,21 +229,21 @@ WHERE (ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000')
        '  680261OBP-1822BSOBV97', '  680524MDWM-0015 SB', '  680524MDWM-0002 SB', '  680524MDWM-0003 SB', '  680524MDWM-0001 SB', 
        '  681451BAK-707 C OBV97', '  681451BAK-707EC OBV97', '  680451BAK-ARTBRDE 97', '  681591BAK-707EC OBV97', '  832531BAK-ARTBRDE 97')
        --Line added 11/9/11: Exclude orders entered more than 30 days ago
-       AND OH.inv_dt > DATEADD(DAY,-33,GETDATE())
+       AND SH.ship_dt > DATEADD(DAY,-21,GETDATE())
        --Line added 3/6/13: Exclude line items with a qty to ship of 0
        -- AND qty_to_ship > 0
        --Exclude fucked up orders with duplicate line numbers
        AND NOT (OH.ord_no = '  701266' AND OL.id = '683182')       
 	   AND NOT (OH.oe_po_no IN ('32205716') AND OH.ord_no like '  8%')     
-       --Exclude CR
-       AND (OL.prod_cat NOT IN ('2', '036', '037','102','336') OR LTRIM(OH.ord_no) IN ('697190','695496','696754','696650','695878','695530','696173','696547','696924','697354','695686','696661','696046','692044','695535','696809',' 695736','695632','695490','696480','696456','696370','697823','691111','697064','692430','696045','695110','696856','695633'))
        --Test Order
-       --AND OH.ord_no = '  705271'
+       --AND OH.ord_no = '  720624'
        --Exclude bad shipments that have to be manually fixed
        --AND ((OH.ord_no + RTRIM(OL.item_no)) NOT IN ('  701911OBP-BAN008OBV97'))
        --Add older orders
-       ) OR OH.oe_po_no IN ('31971720' , '31951116', '31772580', '31994422','31915613','32055458','31959213','31961669')
-GROUP BY OH.ord_no, oe_po_no, OH.cus_alt_adr_cd, OL.promise_dt, OH.shipping_dt, SH.ship_dt, OH.cus_no, OH.ship_to_addr_2, OH.ship_to_addr_4, OH.ship_via_cd, OH.ship_via_cd, XX.code, SH.tracking_no, SH.[Pallet/Carton ID], SH.ID, OL.item_desc_1, OL.item_no, SH.Qty, OL.qty_to_ship, OH.ship_to_name, ShpSumTot.Qty
+       ) OR OH.oe_po_no IN ('32238272')
+GROUP BY OH.ord_no, oe_po_no, OH.cus_alt_adr_cd, OL.promise_dt, OH.shipping_dt, SH.ship_dt, OH.cus_no, OH.ship_to_addr_2, 
+		OH.ship_to_addr_4, OH.ship_via_cd, OH.ship_via_cd, XX.code, SH.tracking_no, SH.[Pallet/Carton ID], SH.ID,
+		OL.item_desc_1, OL.item_no, SH.Qty, OL.qty_to_ship, OH.ship_to_name, ShpSumTot.Qty, OH.inv_dt
 
 /***********************************************************************/
 /*Order Acknowledgement*/
@@ -274,7 +296,6 @@ WHERE ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000') AND OH.oe_po_no > 
                AND isnumeric(oe_po_no) = 1
 			   --Exclude bad orders
 			   AND NOT (OH.oe_po_no IN ('32205716') AND OH.ord_no like '  8%')
-
                AND OL.shipped_dt IS NULL 
                AND (NOT(OH.ship_instruction_1 LIKE '%REPLA%') OR OH.ship_instruction_1 IS NULL)
                AND (NOT(OH.user_def_Fld_3 LIKE '%RP%') OR OH.user_def_fld_3 IS NULL)
@@ -348,11 +369,11 @@ FROM  OELINHST_SQL OL WITH (NOLOCK) INNER JOIN
                --LEFT OUTER JOIN imitmidx_sql IM WITH (NOLOCK) ON OL.item_no = OL.item_no
 WHERE ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000') AND OH.oe_po_no > '0' AND OH.ord_type = 'O' AND NOT OL.item_no IN ('ADD ON', 'BACKORDER', 
                'CAP EX', 'FIXTURE REQUEST', 'INITIAL DIV 01', 'INITIAL RM', 'INITIAL SC', 'INITIAL WNM', 
-               'PROTOTYPE METAL', 'PROTOTYPE PLASTIC', 'PROTOTYPE WOOD', 'REVIEW ITEM', 'SAMPLE') 
+               'PROTOTYPE METAL', 'PROTOTYPE PLASTIC', 'PROTOTYPE WOOD', 'REVIEW ITEM', 'SAMPLE','WAREHOUSE ITEM') 
                AND OH.oe_po_no IS NOT NULL AND NOT OH.cus_alt_adr_cd IS NULL AND NOT OH.ship_to_addr_2 LIKE 'PO BOX%' AND 
                NOT shipping_dt IS NULL AND OH.ship_to_addr_4 LIKE '%,%' AND isnumeric(cus_alt_adr_cd) = 1 
                AND isnumeric(oe_po_no) = 1 AND qty_to_ship > 0 AND ((OH.ord_no + OL.item_no) IN ('') OR OH.ord_no = '  ')
-UNION ALL
+--UNION ALL
 --Totally fake item, never was shipped, but we are acknowledging it to get it off of the report
-SELECT '838115'	,'31756973'	,'5337'	,'701579'	,'1/26/2013'	,'1/26/2013'	,'1/29/2013'	,'CW'	,'951 TOWN EAST BLVD'                      	,'MESQUITE'	,'TX'	,'TRN'    ,'1261343'	,'701579',	'838115F009234210',	'PALLET',	'', '1',	'100047072',	'BW-WALLSTEP','STEP WALL FLORAL DEPT 84 208 PROTO','','','', '1'	,'1','C','','I'
+--SELECT '838115'	,'31756973'	,'5337'	,'701579'	,'1/26/2013'	,'1/26/2013'	,'1/29/2013'	,'CW'	,'951 TOWN EAST BLVD'                      	,'MESQUITE'	,'TX'	,'TRN'    ,'1261343'	,'701579',	'838115F009234210',	'PALLET',	'', '1',	'100047072',	'BW-WALLSTEP','STEP WALL FLORAL DEPT 84 208 PROTO','','','', '1'	,'1','C','','I'
 

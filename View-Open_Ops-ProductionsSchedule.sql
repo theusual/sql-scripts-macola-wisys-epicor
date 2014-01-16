@@ -1,8 +1,8 @@
 --ALTER VIEW Z_OPEN_OPS AS
 --Created:	8/23/12	 By:	BG
---Last Updated:	9/10/13	 By:	BG
+--Last Updated:	12/17/13	 By:	BG
 --Purpose:	Ops Schedule
---Last changes: --
+--Last changes: 1) Changed wspikpak lookup to only remove lines that have a total qty shipped >= total qty ordered
 
 SELECT DISTINCT 
                       CASE WHEN AUD_DTS.aud_dt_min IS NULL THEN OH.entered_dt ELSE AUD_DTS.aud_dt_min END AS PRINTED, 
@@ -38,17 +38,24 @@ FROM         dbo.oeordlin_sql AS OL WITH (NOLOCK) INNER JOIN
                           (SELECT     ord_no, MAX(aud_action) AS aud_action, MAX(user_name) AS user_name, MAX(aud_dt) AS aud_Dt
                             FROM          dbo.oehdraud_sql AS AO WITH (NOLOCK)
                             WHERE      (NOT (user_def_fld_5 IN ('', 'TEST'))) AND (aud_action IN ('A', 'C'))
-                            GROUP BY ord_no) AS AUD_LAST ON AUD_LAST.ord_no = OH.ord_no AND AUD_LAST.aud_Dt = AUD_DTS.aud_dt_max LEFT OUTER JOIN
-                      dbo.wsPikPak AS PP WITH (NOLOCK) ON PP.Ord_no = OH.ord_no AND PP.Line_no = OL.line_no
+                            GROUP BY ord_no) AS AUD_LAST ON AUD_LAST.ord_no = OH.ord_no AND AUD_LAST.aud_Dt = AUD_DTS.aud_dt_max 
+                     LEFT OUTER JOIN (SELECT SUM(QTY) AS SumQty, ord_no, line_no	
+							    FROM wspikpak WITH (NOLOCK)
+								WHERE  shipped = 'Y'
+								GROUP BY ord_no, line_no) AS PP ON PP.Line_no = OL.line_no AND pp.ord_no = OL.ord_no 
 WHERE     (OH.ord_type = 'O') AND (LTRIM(OH.cus_no) NOT IN ('23033', '24033', '32300')) 
-			AND (PP.Shipped <> 'Y' OR PP.Shipped IS NULL) 
 			AND (OL.shipped_dt IS NULL) 
 			AND (NOT (OH.user_def_fld_5 IN ('', 'TEST'))) 
 			AND (NOT (OH.user_def_fld_5 IS NULL)) 
 			AND (OL.loc NOT IN ('CAN','IN', 'BR', 'IT')) AND (INVWS.loc = 'WS')
+			--If no shipment record or if total qty shipped < total qty ordered (split shipped line)
+			AND (pp.SumQty is null OR pp.SumQty < OL.tot_qty_ordered)
 GROUP BY OH.entered_dt, AUD_DTS.aud_dt_min, AUD_LAST.aud_Dt, AUD_LAST.aud_action, AUD_LAST.user_name, AUD_DTS.aud_dt_max, 
 		OH.mfg_loc, OL.loc, OH.shipping_dt, OH.ord_no, OH.cus_no, OH.ship_to_name, OH.ship_to_addr_2, OH.ship_to_addr_4, 
 		OL.qty_ordered, OL.item_no, CMT.line_seq_no, OH.ship_instruction_1, OH.ship_instruction_2, IM.prod_cat, OL.line_no, 
 		OL.item_desc_1, OL.item_desc_2, IM.drawing_release_no, IM.drawing_revision_no, BM.qty_per_par, OL.qty_ordered, 
 		BM.comp_item_no, BM.seq_no, OL.unit_price, OH.oe_po_no, IM.item_note_3, OH.ord_dt, OL.picked_dt, OL.ord_type, 
 		OH.slspsn_no, OH.ship_via_cd, INV.qty_on_hand, INVWS.qty_on_hand, INVFW.qty_on_hand
+
+
+--Add 5 more levels

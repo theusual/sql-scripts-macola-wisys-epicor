@@ -3,13 +3,13 @@
 DECLARE @MonthsBack AS INT
 DECLARE @Month AS VARCHAR(20)
 
-SET @MonthsBack = -8
+SET @MonthsBack = -5
 SET @Month = DATENAME(MONTH,DATEADD(MONTH,@MonthsBack,GETDATE()))
 SELECT @Month
 
 SELECT     DISTINCT TOP (100) PERCENT QtyOrd.item_no , EDI.edi_item_num AS SAP#, IM.item_desc_1, IM.item_desc_2, INV.qty_on_hand AS QOH, 
-			QtyOrd.QtyOrd AS [QtyOrd], Forecast.[Mar 2013] AS [Forecast], (Forecast.[Mar 2013] - QtyOrd.QtyOrd) AS [DIFF], 
-			CASE WHEN Forecast.[Mar 2013] IS NULL THEN 'N' ELSE 'Y' END AS [On Forecast?]
+			QtyOrd.QtyOrd AS [QtyOrd], Forecast.[Jul 2013] AS [Forecast], (Forecast.[Jul 2013] - QtyOrd.QtyOrd) AS [DIFF], 
+			CASE WHEN Forecast.[Jul 2013] IS NULL THEN 'N' ELSE 'Y' END AS [On Forecast?]
 FROM         (
 				SELECT SUM(QtyOrd) AS QtyOrd, item_no
 				FROM (
@@ -64,16 +64,17 @@ FROM         (
 			 JOIN edcitmfl_sql EDI ON EDI.mac_item_num = QtyOrd.item_no
              LEFT OUTER JOIN (
 							  SELECT   --SUM([Feb 2013]) AS [Feb 2013],
-									   SUM([Mar 2013]) AS [Mar 2013],
-									   SUM([Apr 2013]) AS [Apr 2013], 
-									   SUM([May 2013]) AS [May 2013], 
-									   SUM([Jun 2013]) AS [Jun 2013], 
+									  -- SUM([Mar 2013]) AS [Mar 2013],
+									   --SUM([Apr 2013]) AS [Apr 2013], 
+									   --SUM([May 2013]) AS [May 2013], 
+									   --SUM([Jun 2013]) AS [Jun 2013], 
 									   SUM([Jul 2013]) AS [Jul 2013], 
-									   SUM([Aug 2013]) AS [Aug 2013], 
-									   SUM([Sep 2013]) AS [Sep 2013], 
-									   SUM([Oct 2013]) AS [Oct 2013],
+									   --SUM([Aug 2013]) AS [Aug 2013], 
+									   --SUM([Sep 2013]) AS [Sep 2013], 
+									   --SUM([Oct 2013]) AS [Oct 2013],
+									   --SUM([Nov 2013]) AS [Nov 2013],
 									   [Article Number]
-							   FROM  dbo.WM_Forecast_2013_March AS Forecast 
+							   FROM  dbo.WM_Forecast_2013_July AS Forecast 
 							   GROUP BY [Article Number]
 							   ) AS Forecast ON Forecast.[Article Number] =  CAST(EDI.edi_item_num AS VARCHAR)
 			 JOIN Z_IMINVLOC INV ON INV.item_no = QtyOrd.item_no
@@ -83,7 +84,7 @@ FROM         (
 ORDER BY QtyOrd.item_no DESC
 
 --To check numbers:
-SELECT * FROM dbo.WM_Forecast_2013_August WHERE [Article Number] = '100059937'
+SELECT * FROM dbo.WM_Forecast_2013_May WHERE [Article Number] = '100034476'
 
 SELECT * 
 FROM oehdrhst_sql OH JOIN oelinhst_sql OL ON OH.inv_no = OL.inv_no 

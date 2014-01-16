@@ -37,7 +37,7 @@ FROM  dbo.imitmidx_sql IM JOIN
 	UNION ALL
 	--QOH for BOM items that don't pull on the query above
 	SELECT  BMIM.item_no AS Item, BMIM.item_desc_1 AS ItemDesc1, BMIM.item_desc_2 AS ItemDesc2, 'QOH' AS [PO/SLS], 
-			'01/01/2013' AS [SHP OR RECV DT],78 AS [QTY (QOH/QTY SLS/QTY REC)], '' AS [PROJ QOH], 
+			'01/01/2013' AS [SHP OR RECV DT],1242 AS [QTY (QOH/QTY SLS/QTY REC)], '' AS [PROJ QOH], 
 			'QOH' AS ORD#, 'QOH' AS [VEND/CUS], 'QOH' AS [ORD DT],'QOH' AS CONTAINER, 'QOH' AS [CONT. SHP TO], 'QOH' AS [XFER TO], BMIM.prod_cat AS [PROD CAT], 
 			NULL AS [CUS#/VEND#], BMIM.item_note_1 AS CH,'QOH' AS STORE, 'QOH' AS [PARENT ITEM (ONLY ON SALES)], BMIM.item_note_4 AS ESS, 
 			BMIM.extra_10 AS usage_ytd, '' AS [OrdType2], BMIM.extra_1 AS 'ParentFlag', BMIM.item_note_5
@@ -89,7 +89,7 @@ FROM  dbo.imitmidx_sql IM JOIN
 				  --LEFT OUTER JOIN Z_IMINVLOC_USAGE USG ON USG.item_no = IM2.item_no
 	WHERE  --(IM2.prod_cat NOT IN ('036', '336', '102', '037'))  AND
 			--(PL.stk_loc NOT IN ('BR', 'IN', 'CAN')) AND
-			 PL.qty_received >= PL.qty_ordered AND 
+			 PL.qty_received >= 0 AND 
 			 --AND PL.qty_released >= PL.qty_ordered) 
 			PH.ord_status != 'X' AND PL.ord_status != 'X' 
 			--Expand the list to include china prod cat items even if not purchased last year
@@ -100,10 +100,9 @@ FROM  dbo.imitmidx_sql IM JOIN
 	UNION ALL
 
 	SELECT BM.comp_item_no AS ITEM, BMIM.item_desc_1 AS ItemDesc1, BMIM.item_desc_2 AS ItemDesc2, 'SALE' AS [PO/SLS], 
-		--CASE WHEN CONVERT(varchar(10), OH.shipping_dt, 101) < GETDATE() THEN CONVERT(VARCHAR(10), DATEADD(day, 0, GETDATE()), 101) 
-			 --ELSE 
-			 CONVERT(varchar(10), OH.shipping_dt, 101) --END 
-			 AS [SHP/RECV DT], CAST(OL.qty_to_ship AS INT) * BM.qty_per_par * - 1 AS QTY, 
+		   CASE WHEN OH.shipping_dt is null THEN DATEADD(day,30,OH.ord_dt)
+				ELSE CONVERT(varchar(10), OH.shipping_dt, 101) 
+			END AS [SHP/RECV DT], CAST(OL.qty_to_ship AS INT) * BM.qty_per_par * - 1 AS QTY, 
 		'' AS [PROJ QOH], CAST(RTRIM(LTRIM(OH.ord_no)) AS VARCHAR) AS [ORDER], OH.ship_to_name AS [VEND/CUS], CONVERT(varchar(10), OH.entered_dt, 101) AS [ORDER DATE], NULL AS [CONTAINER INFO], 
 	NULL  AS [Container Ship To], NULL AS [TRANSFER TO], BMIM.prod_cat AS [PROD CAT], LTRIM(OH.cus_no) AS [CUS NO], BMIM.item_note_1 AS CH, 
 	 OH.cus_alt_adr_cd AS STORE, OL.item_no AS [PARENT ITEM ON SALES ORD], BMIM.item_note_4 AS ESS, 
@@ -128,14 +127,14 @@ FROM  dbo.imitmidx_sql IM JOIN
 		   --Expand the list to include china prod cat items even if not purchased last year
 			--AND (PURCH_LAST_YR.item_no IS NOT NULL OR (IM2.prod_cat LIKE '3%') OR IM2.item_note_1 = 'CH')
 		   --Test
-		   --AND BMIM.item_no = '11491 LONG SIDE'
+		   --AND BMIM.item_no = 'ST-01 12" AZCL'
 	                   
 	UNION ALL
 
 	SELECT OL.item_no AS ITEM, IM2.item_desc_1 AS ItemDesc1, IM2.item_desc_2 AS ItemDesc2, 'SALE' AS [PO/SLS], --CASE WHEN CONVERT(varchar(10), 
-				  --OH.shipping_dt, 101) < GETDATE() THEN CONVERT(VARCHAR(10), DATEADD(day, 0, GETDATE()), 101) ELSE 
-				  CONVERT(varchar(10),OH.shipping_dt, 101) --END 
-				  AS [SHP/RECV DT], OL.qty_to_ship * - 1 AS QTY, '' AS [PROJ QOH], 
+				  CASE  WHEN OH.shipping_dt is null THEN DATEADD(day,30,OH.ord_dt)
+						ELSE CONVERT(varchar(10), OH.shipping_dt, 101) 
+				  END AS [SHP/RECV DT], OL.qty_to_ship * - 1 AS QTY, '' AS [PROJ QOH], 
 				  CAST(RTRIM(LTRIM(OH.ord_no)) AS VARCHAR) AS [ORDER], OH.ship_to_name AS [VEND/CUS], 
 				  CONVERT(varchar(10), OH.entered_dt, 101) AS [ORDER DATE], NULL AS [CONTAINER INFO], NULL 
 				  AS [Container Ship To], NULL AS [TRANSFER TO], OL.prod_cat AS [PROD CAT], LTRIM(OH.cus_no) AS [CUS NO], 
@@ -162,7 +161,7 @@ FROM  dbo.imitmidx_sql IM JOIN
 					--Expand the list to include china prod cat items even if not purchased last year
 					--AND (PURCH_LAST_YR.item_no IS NOT NULL OR (IM2.prod_cat LIKE '3%') OR IM2.item_note_1 = 'CH')
 	) AS HolyGrail ON IM.item_no = HolyGrail.Item
-WHERE ([Item] IN ('Met-brd bv') 
-	OR [Item] IN (SELECT comp_item_no FROM dbo.bmprdstr_sql WHERE item_no IN ('Met-brd bv')))
+WHERE ([Item] IN ('ST-01 NPKSTDb') 
+	OR [Item] IN (SELECT comp_item_no FROM dbo.bmprdstr_sql WHERE item_no IN ('ST-01 NPKSTDb')))
 	--AND YEAR([SHP OR RECV DT]) = 2013
 ORDER BY Item, [SHP OR RECV DT]

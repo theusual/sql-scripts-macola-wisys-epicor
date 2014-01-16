@@ -272,8 +272,7 @@ SELECT TOP (100) PERCENT '___' AS LN,
 						AND (Z_IMINVLOC.qty_on_hand < 0) 
 				   THEN (ROUND(Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated, 0))	            
          ELSE 0 
-         END AS [QOH+QOO-QOA-(ESS/WMF/QPROJ)],     
-         
+         END AS [QOH+QOO-QOA-(ESS/WMF/QPROJ)], 
         /*     
        CASE WHEN (NOT (imitmidx_sql.extra_1 = 'P') OR imitmidx_sql.extra_1 IS NULL OR  imitmidx_sql.extra_6 = 'CH-US') 
 				AND (Z_IMINVLOC.qty_on_hand <= 0) 
@@ -296,18 +295,12 @@ SELECT TOP (100) PERCENT '___' AS LN,
 			THEN (ROUND(Z_IMINVLOC.qty_on_ord,3))
 		ELSE '' END AS [QOH+QOO-90], 	
 	   */
-			
        Z_IMINVLOC.po_min AS MOQ, 
-       
        --'_________' AS [ORDER], 
        IMITMIDX_SQL.item_note_2 AS Supplier,  
        IMITMIDX_SQL.item_note_5 AS [Misc Note (N5)],
-        
        IMITMIDX_SQL.p_and_ic_cd AS [Rec Loc],
-        
        Z_IMINVLOC.prior_year_usage AS PYU, 
-       
-	                  
        dbo.Z_IMINVLOC_USAGE.usage_ytd,     
        CAST(ROUND(Z_IMINVLOC.last_cost, 2, 0) AS DECIMAL(8, 2)) AS LC, 
        CAST(ROUND(Z_IMINVLOC.std_cost, 2, 0) AS DECIMAL(8, 2)) AS SC, 

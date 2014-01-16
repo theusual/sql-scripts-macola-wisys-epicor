@@ -42,4 +42,4 @@ WHERE (OH.ord_type = 'O')
         AND (OL.qty_ordered > SumShp.SumQty OR PP.Shipped IS NULL)
 GROUP BY OH.ID,OH.mfg_loc, OL.loc, OH.shipping_dt, OH.ord_no, OH.ship_to_name, OH.cus_alt_adr_cd, OL.item_no, OL.item_no, OL.line_seq_no, OL.item_desc_1, OL.prod_cat, OL.qty_to_ship, OH.oe_po_no, OH.ship_via_cd, OH.ship_instruction_1, OH.ship_instruction_2, OL.ord_no, OH.entered_dt, OL.ID,  PP.Pallet, OL.extra_8
 ORDER BY Store, shipping_dt, OH.ord_no
-       
+

@@ -1,15 +1,16 @@
 --Queries for fixing hung up invoices that will not post or print
 -----------------------------------------------------------------
 
-SELECT inv_batch_id, selection_cd, inv_dt, inv_no, status, * FROM oeordhdr_SQL OH WHERE ord_no = '  708168'
+SELECT inv_batch_id, selection_cd, inv_dt, inv_no, status, * FROM oeordhdr_SQL OH WHERE inv_no = '  530903'
+SELECT inv_batch_id, selection_cd, inv_dt, inv_no, status, * FROM oeordhdr_SQL OH WHERE ord_no = '  379429'
 
 --Compare the hung up invoices with a new invoice to see which fields need to be reset to starting status
 SELECT orig_ord_type, [status], inv_batch_id, selection_cd, inv_Dt, inv_no, * 
 FROM oeordhdr_Sql OH LEFT OUTER JOIN oeordlin_Sql OL ON OH.ord_no = OL.ord_no
-WHERE OH.inv_batch_id = 'VL 6/12'
+WHERE OH.inv_batch_id = '11/06 DD'
 
 --Check if invoice is in power inquiry tables, if it is remove the entries with an invoice # (entries w/o invoice # are normal open order entries)
-SELECT * FROM oepdshdr_sql WHERE ord_no IN (SELECT ord_no FROM oeordhdr_SQL OH WHERE OH.inv_batch_id = '12/13 DM') AND invoice_no != ''
+SELECT * FROM oepdshdr_sql WHERE ord_no IN (SELECT ord_no FROM oeordhdr_SQL OH WHERE OH.inv_batch_id IN ('11/14 DD','11/06 DD')) AND invoice_no != ''
 
 DELETE FROM oepdshdr_sql WHERE ord_no IN (SELECT ord_no FROM oeordhdr_SQL OH WHERE OH.inv_batch_id = '11/16 CS') AND invoice_no != ''
 
@@ -17,11 +18,11 @@ DELETE FROM oepdshdr_sql WHERE ord_no IN (SELECT ord_no FROM oeordhdr_SQL OH WHE
 --FOR I-ONLY:
 UPDATE dbo.oeordhdr_sql
 SET inv_batch_id = 'BRYAN', selection_cd = 'S', inv_dt = NULL, inv_no = '', status = 1
-WHERE ord_no IN ('  131404','  131403')
+WHERE inv_batch_id IN ('11/14 DD','11/06 DD')
 --FOR REGULAR INVOICES:
 UPDATE dbo.oeordhdr_sql
 SET inv_batch_id = 'BRYAN', selection_cd = 'S', inv_dt = NULL, inv_no = '', status = 8
-WHERE ORD_NO IN (SELECT ord_no FROM oeordhdr_SQL OH WHERE OH.inv_batch_id = '12/13 DM')
+WHERE ORD_NO IN (SELECT ord_no FROM oeordhdr_SQL OH WHERE OH.inv_batch_id = ('11/14 DD','11/06 DD'))
 --FOR CREDITS:
 UPDATE dbo.oeordhdr_sql
 SET inv_batch_id = 'DOUG', selection_cd = 'S', inv_dt = NULL, inv_no = '', status = 1
@@ -32,5 +33,5 @@ SELECT * FROM oeordhdr_Sql OH JOIN oeordlin_Sql OL ON OH.ord_no = OL.ord_no WHER
 
 SELECT * FROM dbo.oehdraud_sql WHERE inv_batch_id = 'VL 9/5' AND inv_no != '' --AND ord_no = '  372933'
 
-SELECT inv_no, inv_batch_id, status, selection_cd, * FROM oeordhdr_sql WHERE ord_no = '  131403'
+SELECT inv_no, inv_batch_id, status, selection_cd, * FROM oeordhdr_sql WHERE ord_no = '  379360'
 

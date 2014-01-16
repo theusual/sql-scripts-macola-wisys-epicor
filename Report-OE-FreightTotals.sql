@@ -12,3 +12,5 @@ WHERE LTRIM(OH.cus_no) = '1100' AND YEAR(oh.inv_dt) = '2011'
 --Grouped by month and carrier...
 
 GROUP BY YEAR(oh.inv_dt), MONTH(oh.inv_dt), SUBSTRING(oh.cmt_1, 1, 3), x.code_desc
+
+

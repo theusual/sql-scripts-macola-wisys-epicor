@@ -5,6 +5,7 @@
 --Purpose:	View for Late Order Report refreshed each morning by production control
 --Last Change:  Adding ship_instruction_1 for WM GO dates.  Added back prod cat #2, added back cus #9999
 --Last Change 2: Added the wspikpak table for shipments check
+--Last Change 3: Changed wspikpak lookup to only remove lines that have a total qty shipped >= total qty ordered
 
 
 SELECT TOP (100) PERCENT CONVERT(varchar, CAST(RTRIM(dbo.oeordhdr_sql.shipping_dt) AS datetime), 101) AS [Shipping Date], CONVERT(varchar, 
@@ -21,7 +22,10 @@ FROM  dbo.oeordlin_sql INNER JOIN
                dbo.imitmidx_sql WITH (NOLOCK) ON dbo.oeordlin_sql.item_no = dbo.imitmidx_sql.item_no INNER JOIN
                dbo.Z_IMINVLOC WITH (NOLOCK) ON dbo.Z_IMINVLOC.item_no = dbo.imitmidx_sql.item_no INNER JOIN
                dbo.oeordhdr_sql WITH (NOLOCK) ON dbo.oeordhdr_sql.ord_type = dbo.oeordlin_sql.ord_type AND dbo.oeordhdr_sql.ord_no = dbo.oeordlin_sql.ord_no
-			   JOIN wspikpak AS PP WITH (NOLOCK) ON PP.Line_no = oeordlin_sql.line_no AND pp.ord_no = oeordlin_sql.ord_no 
+			   LEFT OUTER JOIN (SELECT SUM(QTY) AS SumQty, ord_no, line_no	
+							    FROM wspikpak WITH (NOLOCK)
+								WHERE  shipped = 'Y'
+								GROUP BY ord_no, line_no) AS PP ON PP.Line_no = oeordlin_sql.line_no AND pp.ord_no = oeordlin_sql.ord_no 
 WHERE		   (dbo.oeordhdr_sql.ord_type = 'O') 
 			   AND (CONVERT(varchar, CAST(RTRIM(dbo.oeordhdr_sql.shipping_dt) AS datetime),101) < DATEADD(day, - 1, GETDATE())) 
 			   AND (NOT (dbo.oeordhdr_sql.ord_no IN ('920450', '920492', '920505'))) 
@@ -34,20 +38,17 @@ WHERE		   (dbo.oeordhdr_sql.ord_type = 'O')
                AND NOT (dbo.oeordlin_sql.item_no LIKE '%TEST%') 
                AND NOT (LTRIM(RTRIM(dbo.oeordhdr_sql.cus_no)) IN ('11575', '23033'))
                AND dbo.oeordlin_sql.shipped_dt IS NULL
-			   AND (pp.shipped = 'N' OR pp.shipped is null)
+			   AND (pp.SumQty is null OR pp.SumQty < oeordlin_sql.tot_qty_ordered)
 
                --Added Back on 4/26/12 by BG:
                AND (NOT (dbo.oeordlin_sql.prod_cat IN ('037', '036', '102', '111', '336'))) 
-               
+            
                --Test Order
-               --AND dbo.oeordhdr_sql.ord_no = '  833805'  
+               --AND dbo.oeordhdr_sql.ord_no = ' 5022458'  
                
                --Added on 6/5/12:
                --AND oeordhdr_sql.ord_no NOT IN (SELECT ord_no FROM oeordlin_sql WHERE prod_cat = '551')
-              
-               
-
-
+           
 --UNION ALL
 
 --SELECT DISTINCT CONVERT(varchar, CAST(RTRIM(dbo.oeordhdr_sql.shipping_dt) AS datetime), 101) AS [Shipping Date], CONVERT(varchar, 
