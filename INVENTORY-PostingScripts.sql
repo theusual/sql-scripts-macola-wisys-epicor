@@ -7,14 +7,15 @@ from [BG_BACKUP].[dbo].[inventory_010114_update_frzqty] AS INV
 
 --Backup pre-post values from IMINVLOC
 SELECT * 
-INTO [BG_BACKUP].dbo.iminvloc_prepost_01062014]
+INTO [BG_BACKUP].dbo.iminvloc_prepost_01062014
 FROM dbo.iminvloc_sql WITH (NOLOCK)
 
 --Zero out all qty, frz
 --AVG TIME: 3mins on RDP to 001
 
 UPDATE iminvloc_sql
-SET qty_on_hand = 0, frz_dt = '2014-01-06 00:00:00.000', frz_qty = 0
+SET frz_dt = '2013-12-31 00:00:00.000'
+--, qty_on_hand = 0, frz_qty = 0
 
 select * from iminvloc_sql 
 --WHERE loc != 'CAN'

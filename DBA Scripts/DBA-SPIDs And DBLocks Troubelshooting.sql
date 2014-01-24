@@ -28,6 +28,10 @@ LEFT JOIN sys.dm_exec_connections con
 ON con.session_id = ses.session_id
 WHERE ses.[status] != 'sleeping'
 
+select *
+from sys.dm_os_schedulers
+where scheduler_id < 255
+
 KILL 755
 
 --Show wait stats grouped by program

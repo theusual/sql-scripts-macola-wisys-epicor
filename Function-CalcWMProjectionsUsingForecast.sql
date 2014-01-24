@@ -1,6 +1,6 @@
 --Created By: BG
 --Created On: 3/8/13
---Updated On: 12/2/13
+--Updated On: 1/17/14
 --Purpose:  Calc WM projections using the WM forecasts that are imported into the database
 --Last Change:  Added Grouping, joined on EDI table, added BOM query
 
@@ -13,6 +13,21 @@ BEGIN
 	DECLARE @proj AS INT
 	
 	SET @currentmonth = MONTH(GETDATE())--MONTH(DATEADD(month,1,GETDATE()))
+	IF @currentmonth = 1 BEGIN
+		SET @proj = (SELECT SUM(Current_Proj) AS Current_Proj
+					FROM (
+						SELECT SUM([Jan 2014] + [Feb 2014] + [Mar 2014] + [Apr 2014]) AS Current_Proj
+											FROM WM_Forecast_2013 JOIN dbo.edcitmfl_sql EdiIM ON EdiIM.edi_item_num = dbo.WM_Forecast_2013.[Article]
+											WHERE EdiIM.mac_item_num = @item 
+											GROUP BY EdiIM.mac_item_num
+						UNION ALL
+						SELECT SUM([Jan 2014] + [Feb 2014] + [Mar 2014] + [Apr 2014]) AS Current_Proj
+											FROM WM_Forecast_2013 JOIN dbo.edcitmfl_sql EdiIM ON EdiIM.edi_item_num = dbo.WM_Forecast_2013.[Article]
+																  LEFT OUTER JOIN dbo.bmprdstr_sql BM ON BM.item_no = EdiIM.mac_item_num
+											WHERE BM.comp_item_no = @item
+					) AS Temp)
+	END
+
 	/*
 	IF @currentmonth = 3 BEGIN
 		SET @proj = (SELECT SUM(Current_Proj) AS Current_Proj
@@ -170,7 +185,7 @@ BEGIN
 											GROUP BY BM.qty_per_par
 					) AS Temp)
 	END
-	*/
+	
 	IF @currentmonth = 12 BEGIN
 		SET @proj = (SELECT SUM(Current_Proj) AS Current_Proj
 					FROM (
@@ -188,7 +203,7 @@ BEGIN
 											GROUP BY BM.qty_per_par
 					) AS Temp)
 	END
-	
+	*/
 	RETURN @proj
 
 END

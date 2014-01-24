@@ -22,16 +22,14 @@ FROM         (
 						  --Exclude BAK619 door pieces
 						  AND OL.item_no NOT LIKE 'B619%'
 						  AND OL.item_no NOT IN ('BAK-619 DOORSBL','BAK-619 DOORSBR')
-						  --Exclude FR (Cororate Orders)
-						  AND OH.user_def_fld_3 NOT LIKE '%FR%'
 						  --Exclude CapEx
 						  AND OH.user_def_fld_3 NOT LIKE '%CAPEX%'
 					GROUP BY item_no, inv_dt
 					UNION ALL
 					SELECT item_no, SUM(qty_ordered) AS QtyOrd 
 					FROM dbo.oeordhdr_sql OH WITH(NOLOCK) JOIN oeordlin_Sql OL ON OL.ord_no = OH.ord_no 
-					WHERE   MONTH(OH.inv_dt) = MONTH(DATEADD(month, -1, GETDATE()))
-							AND YEAR(OH.inv_dt) = YEAR(DATEADD(month, -1, getdate()))
+					WHERE   MONTH(OL.shipped_dt) = MONTH(DATEADD(month, -1, GETDATE()))
+							AND YEAR(OL.shipped_dt) = YEAR(DATEADD(month, -1, getdate()))
 						  --Exclude Case Fronts and AP
 						  AND OL.prod_cat NOT IN ('037', '2', '036', '102', '111', '336','AP','7')
 						  --Exclude Z parts 
@@ -42,10 +40,8 @@ FROM         (
 						  --Exclude prototypes
 						  AND OL.item_no NOT LIKE 'PROTO%'
 						  --Exclude BAK619 door pieces
-						  AND OL.item_no NOT LIKE 'B619%'
+						  --AND OL.item_no NOT LIKE 'B619%'
 						  AND OL.item_no NOT IN ('BAK-619 DOORSBL','BAK-619 DOORSBR')
-						  --Exclude FR (Cororate Orders)
-						  AND OH.user_def_fld_3 NOT LIKE '%FR%'
 						  --Exclude CapEx
 						  AND OH.user_def_fld_3 NOT LIKE '%CAPEX%'
 					GROUP BY item_no

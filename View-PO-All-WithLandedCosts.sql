@@ -16,3 +16,7 @@ FROM poordhdr_sql PH JOIN poordlin_sql PL ON PL.ord_no = PH.ord_no
 					 LEFT OUTER JOIN BG_CH_Vendors CH ON CH.vend_no = ltrim(PH.vend_no)
 					 LEFT OUTER JOIN popurcst_sql LND ON LND.ord_no = PL.ord_no AND LND.line_no = PL.line_no
 WHERE receipt_dt > DATEADD(year,-2,GETDATE()) AND qty_received > 0
+
+
+select *
+from popurcst_sql

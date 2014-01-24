@@ -174,6 +174,7 @@ FROM  dbo.imitmidx_sql IM JOIN
 					AND (PURCH_LAST_YR.item_no IS NOT NULL OR (IM2.prod_cat IN ('036', '037', '111', '336', '102')))
 	) AS HolyGrail ON IM.item_no = HolyGrail.Item
 	LEFT OUTER JOIN oeordhdr_sql OH ON ltrim(OH.ord_no) = HolyGrail.[Ord#]
+WHERE ltrim(OH.ord_no) not like '7%' OR OH.ord_no is null
 ORDER BY Item, [SHP OR RECV DT]
 
 /*  Old version replaced on 1/8/14:
