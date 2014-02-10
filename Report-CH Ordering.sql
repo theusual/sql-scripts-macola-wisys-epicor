@@ -15,7 +15,6 @@ SELECT TOP (100) PERCENT '___' AS LN,
 		Z_IMINVLOC.item_no, IMITMIDX_SQL.item_desc_1, IMITMIDX_SQL.item_desc_2, 
 		CASE WHEN (IMITMIDX_SQL.extra_1) IS NULL THEN '' ELSE IMITMIDX_SQL.extra_1 END AS Parent,
 		IMITMIDX_SQL.extra_6 AS [CH-US],
-			
         CAST(Z_IMINVLOC.qty_on_ord AS INT) AS QOO, 
         CAST(Z_IMINVLOC.qty_on_hand AS Int) AS QOH, 
         CAST(QC.[QOH CHECK] AS INT) AS [QOH CHK],
@@ -23,14 +22,15 @@ SELECT TOP (100) PERCENT '___' AS LN,
         IMITMIDX_SQL.item_note_3 AS QPS,
         '___' AS AQOH, 
         CAST(Z_IMINVLOC.frz_qty AS INT) AS FQTY, 
-			
         --dbo.Z_IMINVLOC_QALL.qty_allocated AS QALL_ALL, 
-        CASE WHEN proj.qty_proj > 0 THEN CAST((dbo.Z_IMINVLOC_QALL.qty_allocated - Proj.qty_proj) AS Int) 
+        
+		CASE WHEN proj.qty_proj > 0 THEN CAST((dbo.Z_IMINVLOC_QALL.qty_allocated - Proj.qty_proj) AS Int) 
 			 ELSE CAST(Z_IMINVLOC_QALL.qty_allocated AS Int) 
         END AS QALL, 
         CASE WHEN proj.qty_proj > 0 THEN CAST(proj.qty_proj AS INT) 
 			 ELSE '0' 
 		END AS QPROJ, 
+		
 		IMITMIDX_SQL.item_note_4 AS ESS, 
         dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) AS [WM Forecast],
         CASE WHEN NOT (imitmidx_sql.extra_1 = 'P') AND CAST(Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord AS INT) < dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no)
@@ -40,7 +40,6 @@ SELECT TOP (100) PERCENT '___' AS LN,
         CASE WHEN Z_IMINVLOC.prior_year_usage IS NULL THEN 0
              ELSE CAST(ROUND(Z_IMINVLOC.prior_year_usage / 12, 0) AS INT) 
         END AS PMNTH, 
-			
         CASE WHEN Z_IMINVLOC_USAGE.usage_ytd IS NULL THEN 0
 			 ELSE CEILING(dbo.Z_IMINVLOC_USAGE.usage_ytd / (DATEDIFF(day, CONVERT(datetime, 
                '01/01/2013', 103), GETDATE()) / 30.5)) 
@@ -49,8 +48,7 @@ SELECT TOP (100) PERCENT '___' AS LN,
         CASE WHEN z_iminvloc_usage.usage_ytd > 0 
 			 THEN CAST(((qty_on_hand + qty_on_ord) / CEILING((z_iminvloc_usage.usage_ytd / (DATEDIFF(day,CONVERT(datetime, '01/01/2013', 103), GETDATE()) / 30.5)))) AS money) 
 		ELSE 0 END AS MOI,  
-		           
-          CASE  WHEN (imitmidx_sql.extra_1 = 'P' AND imitmidx_sql.extra_6 != 'CH-US' AND imitmidx_sql.extra_1 IS NOT NULL)
+        CASE  WHEN (imitmidx_sql.extra_1 = 'P' AND imitmidx_sql.extra_6 != 'CH-US' AND imitmidx_sql.extra_1 IS NOT NULL)
 				THEN ''
 				--If there is a WM forecast and it is >= ESS and >= QPROJ then use the WM forecast
 					WHEN  dbo.fn_BG_WMProjection(IMITMIDX_SQL.item_no) >= 0
@@ -273,6 +271,8 @@ SELECT TOP (100) PERCENT '___' AS LN,
 				   THEN (ROUND(Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated, 0))	            
          ELSE 0 
          END AS [QOH+QOO-QOA-(ESS/WMF/QPROJ)], 
+		 
+
         /*     
        CASE WHEN (NOT (imitmidx_sql.extra_1 = 'P') OR imitmidx_sql.extra_1 IS NULL OR  imitmidx_sql.extra_6 = 'CH-US') 
 				AND (Z_IMINVLOC.qty_on_hand <= 0) 
@@ -306,18 +306,16 @@ SELECT TOP (100) PERCENT '___' AS LN,
        CAST(ROUND(Z_IMINVLOC.std_cost, 2, 0) AS DECIMAL(8, 2)) AS SC, 
        IMITMIDX_SQL.drawing_release_no AS [Dwg #], 
        IMITMIDX_SQL.drawing_revision_no AS [Dwg Rev]              
-           
 FROM  dbo.Z_IMINVLOC AS Z_IMINVLOC WITH (NOLOCK) INNER JOIN
                dbo.imitmidx_sql AS IMITMIDX_SQL WITH (NOLOCK) ON Z_IMINVLOC.item_no = IMITMIDX_SQL.item_no LEFT OUTER JOIN
                dbo.Z_IMINVLOC_QALL WITH (NOLOCK) ON dbo.Z_IMINVLOC_QALL.item_no = Z_IMINVLOC.item_no LEFT OUTER JOIN
                dbo.Z_IMINVLOC_USAGE WITH (NOLOCK) ON dbo.Z_IMINVLOC_USAGE.item_no = Z_IMINVLOC.item_no LEFT OUTER JOIN
-               dbo.Z_IMINVLOC_QOH_CHECK AS QC WITH (NOLOCK) ON QC.item_no = Z_IMINVLOC.item_no LEFT OUTER JOIN
+               dbo.Z_IMINVLOC_QOH_CHECK AS QC WITH (NOLOCK) ON QC.item_no = Z_IMINVLOC.item_no 
+			   LEFT OUTER JOIN
                dbo.BG_WM_Current_Projections AS PROJ WITH (NOLOCK) ON PROJ.item_no = IMITMIDX_SQL.item_no 
-               
 WHERE (IMITMIDX_SQL.item_note_1 = 'CH') 
-		AND (NOT (Z_IMINVLOC.prod_cat = '036' OR Z_IMINVLOC.prod_cat = '037' OR Z_IMINVLOC.prod_cat = '336'))
+		AND (NOT (Z_IMINVLOC.prod_cat = '036' OR Z_IMINVLOC.prod_cat = '037' OR Z_IMINVLOC.prod_cat = '336')) 
 		AND ((dbo.Z_IMINVLOC_USAGE.usage_ytd > 0) OR (Z_IMINVLOC.qty_on_ord > 0) OR (dbo.Z_IMINVLOC_QALL.qty_allocated > 0) 
-				OR (Z_IMINVLOC.prior_year_usage > 0) OR (Z_IMINVLOC.qty_on_hand > 0) OR IMITMIDX_SQL.activity_dt > CONVERT(datetime, '05/01/2013', 103))
+				OR (Z_IMINVLOC.prior_year_usage > 0) OR (Z_IMINVLOC.qty_on_hand > 0) OR IMITMIDX_SQL.activity_dt > CONVERT(datetime, '05/01/2013', 103)) 
 		--Test
 		--AND IMITMIDX_SQL.item_no = '23" SPT BAR GB' 
-ORDER BY Z_IMINVLOC.item_no

@@ -7,22 +7,24 @@ SELECT inv_batch_id, selection_cd, inv_dt, inv_no, status, * FROM oeordhdr_SQL O
 --Compare the hung up invoices with a new invoice to see which fields need to be reset to starting status
 SELECT orig_ord_type, [status], inv_batch_id, selection_cd, inv_Dt, inv_no, * 
 FROM oeordhdr_Sql OH LEFT OUTER JOIN oeordlin_Sql OL ON OH.ord_no = OL.ord_no
-WHERE OH.inv_batch_id = '11/06 DD'
+WHERE OH.inv_batch_id = '01/31 DD'
 
 --Check if invoice is in power inquiry tables, if it is remove the entries with an invoice # (entries w/o invoice # are normal open order entries)
-SELECT * FROM oepdshdr_sql WHERE ord_no IN (SELECT ord_no FROM oeordhdr_SQL OH WHERE OH.inv_batch_id IN ('11/14 DD','11/06 DD')) AND invoice_no != ''
+SELECT * FROM oepdshdr_sql WHERE ord_no IN (SELECT ord_no FROM oeordhdr_SQL OH WHERE OH.inv_batch_id IN ('01/31 DD')) AND invoice_no != ''
 
-DELETE FROM oepdshdr_sql WHERE ord_no IN (SELECT ord_no FROM oeordhdr_SQL OH WHERE OH.inv_batch_id = '11/16 CS') AND invoice_no != ''
+BEGIN TRAN
+DELETE FROM oepdshdr_sql WHERE ord_no IN (SELECT ord_no FROM oeordhdr_SQL OH WHERE OH.inv_batch_id = '01/31 DD') AND invoice_no != ''
+COMMIT TRAN
 
 --Reset the order header fields related to posting back to the starting status
 --FOR I-ONLY:
 UPDATE dbo.oeordhdr_sql
 SET inv_batch_id = 'BRYAN', selection_cd = 'S', inv_dt = NULL, inv_no = '', status = 1
-WHERE inv_batch_id IN ('11/14 DD','11/06 DD')
+WHERE inv_batch_id IN ('01/31 DD')
 --FOR REGULAR INVOICES:
 UPDATE dbo.oeordhdr_sql
 SET inv_batch_id = 'BRYAN', selection_cd = 'S', inv_dt = NULL, inv_no = '', status = 8
-WHERE ORD_NO IN (SELECT ord_no FROM oeordhdr_SQL OH WHERE OH.inv_batch_id = ('11/14 DD','11/06 DD'))
+WHERE ORD_NO IN (SELECT ord_no FROM oeordhdr_SQL OH WHERE OH.inv_batch_id = ('01/31 DD'))
 --FOR CREDITS:
 UPDATE dbo.oeordhdr_sql
 SET inv_batch_id = 'DOUG', selection_cd = 'S', inv_dt = NULL, inv_no = '', status = 1

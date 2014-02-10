@@ -19,6 +19,9 @@ SELECT DISTINCT TOP 100 PERCENT  Item, ItemDesc1, ItemDesc2, [PO/SLS],
 		END AS [WM GO/Ship Instr 1]
 FROM  dbo.imitmidx_sql IM JOIN
 	(
+	-----------------
+	--QOH Parents 
+	-----------------
 	SELECT IM2.item_no AS Item, IM2.item_desc_1 AS ItemDesc1, IM2.item_desc_2 AS ItemDesc2, 'QOH' AS [PO/SLS], 
 	CONVERT(varchar(10), GETDATE(), 101) AS [SHP OR RECV DT], IM.qty_on_hand AS [QTY (QOH/QTY SLS/QTY REC)], '' AS [PROJ QOH], 
 	'QOH' AS ORD#, 'QOH' AS [VEND/CUS], 'QOH' AS [ORD DT],'QOH' AS CONTAINER, 'QOH' AS [CONT. SHP TO], 'QOH' AS [XFER TO], 
@@ -35,12 +38,13 @@ FROM  dbo.imitmidx_sql IM JOIN
 				  PURCH_LAST_YR.item_no = IM2.item_no
 			--LEFT OUTER JOIN Z_IMINVLOC_USAGE USG ON USG.item_no = IM.item_no
 	WHERE (IM2.prod_cat IN ('036', '037', '111', '336', '102')) 
-		  --Expand the list to include china prod cat items even if not purchased last year
-		  AND (PURCH_LAST_YR.item_no IS NOT NULL OR (IM2.prod_cat LIKE '3%') OR IM2.item_note_1 = 'CH')
-		  --AND IM2.item_no = '11491 LONG SIDE'
+		  --AND IM2.item_no = 'AB060 0300X9600'
 		  
 	UNION ALL
-	--QOH for BOM items that don't pull on the query above
+
+	-----------------
+	--QOH Components
+	-----------------
 	SELECT  BMIM.item_no AS Item, BMIM.item_desc_1 AS ItemDesc1, BMIM.item_desc_2 AS ItemDesc2, 'QOH' AS [PO/SLS], 
 			CONVERT(varchar(10), GETDATE(), 101) AS [SHP OR RECV DT], BMINV.qty_on_hand AS [QTY (QOH/QTY SLS/QTY REC)], '' AS [PROJ QOH], 
 			'QOH' AS ORD#, 'QOH' AS [VEND/CUS], 'QOH' AS [ORD DT],'QOH' AS CONTAINER, 'QOH' AS [CONT. SHP TO], 'QOH' AS [XFER TO], BMIM.prod_cat AS [PROD CAT], 
@@ -49,27 +53,26 @@ FROM  dbo.imitmidx_sql IM JOIN
 	FROM  dbo.oeordhdr_sql AS OH INNER JOIN
 				  dbo.oeordlin_sql AS OL ON OL.ord_no = OH.ord_no INNER JOIN
 				  dbo.imitmidx_sql AS IM ON IM.item_no = OL.item_no JOIN
-				  dbo.bmprdstr_sql AS BM ON BM.item_no = OL.item_no LEFT OUTER JOIN
-					  (SELECT DISTINCT PL.item_no
-					   FROM   dbo.poordlin_sql AS PL INNER JOIN
-									  dbo.poordhdr_sql AS PH ON PH.ord_no = PL.ord_no
-					   WHERE (PH.ord_dt > DATEADD(DAY, - 365, GETDATE()))) AS PURCH_LAST_YR ON PURCH_LAST_YR.item_no = BM.comp_item_no 
+				  dbo.bmprdstr_sql AS BM ON BM.item_no = OL.item_no 
 				  LEFT OUTER JOIN Z_IMINVLOC BMINV ON BMINV.item_no = BM.comp_item_no
 				  LEFT OUTER JOIN dbo.imitmidx_sql AS BMIM ON BMIM.item_no = BM.comp_item_no
 				  --LEFT OUTER JOIN Z_IMINVLOC_USAGE USG ON USG.item_no = BM.comp_item_no
-	WHERE (OH.ord_type = 'O') AND (BMIM.prod_cat  IN ('111', '036', '336', '102', '037')) AND (OL.loc NOT IN ('BR', 'IN', 'CAN')) 
+	WHERE (OH.ord_type = 'O')  
 			AND ((CAST(LTRIM(OL.ord_no) AS VARCHAR) + BMIM.item_no + CAST(CAST(OL.qty_to_ship AS INT) AS VARCHAR)) NOT IN
 					  (SELECT CAST(LTRIM(Ord_no) AS VARCHAR) + item_no + CAST(SUM(Qty) AS VARCHAR) AS Expr1
 					   FROM   dbo.wsPikPak
 					   WHERE (Shipped = 'Y')
 					   GROUP BY Ord_no, Item_no))
-		   --Expand the list to include china prod cat items even if not purchased last year
-			AND (PURCH_LAST_YR.item_no IS NOT NULL OR (IM.prod_cat IN ('111', '036', '336', '102', '037')))
+		   --All CR Items
+		   AND (IM.prod_cat IN ('111', '036', '336', '102', '037'))
 		   --Test
-		   --AND BMIM.item_no = '11491 LONG SIDE'
+		   --AND BMIM.item_no = 'AB060 0300X9600'
 
 	UNION ALL
 
+	-----------------
+	--PO All
+	-----------------
 	SELECT PL.item_no AS ITEM, IM2.item_desc_1 AS ItemDesc1, IM2.item_desc_2 AS ItemDesc2, 'PO' AS [PO/SLS], 
 		CASE WHEN (PL.user_def_fld_2 IS NOT NULL AND LEN(PL.user_def_fld_2) = 10)  
 			 THEN PL.user_def_fld_2 
@@ -99,22 +102,69 @@ FROM  dbo.imitmidx_sql IM JOIN
 				  dbo.humres AS HR ON PL.byr_plnr = HR.res_id LEFT OUTER JOIN
 				  dbo.poshpfil_sql AS PS ON PS.ship_to_cd = PH.ship_to_cd
 				  --LEFT OUTER JOIN Z_IMINVLOC_USAGE USG ON USG.item_no = IM2.item_no
-	WHERE   (IM2.prod_cat IN ('036', '037', '111', '336', '102'))
-			AND (PL.stk_loc NOT IN ('BR', 'IN', 'CAN')) 
-			AND (PL.qty_received < PL.qty_ordered AND PL.qty_released < PL.qty_ordered)
+	WHERE   (PL.qty_received < PL.qty_ordered AND PL.qty_released < PL.qty_ordered)
 			AND PH.ord_status != 'X' AND PL.ord_status != 'X' 
-			--Expand the list to include china prod cat items even if not purchased last year
-			AND (PURCH_LAST_YR.item_no IS NOT NULL OR (IM2.prod_cat IN ('036', '037', '111', '336', '102')))
+			--All CR parents
+			AND (IM2.prod_cat IN ('036', '037', '111', '336', '102'))
 			--TEST
 			--AND LTRIM(PH.ord_no) = '12589400'
+	UNION ALL
+
+	-----------------
+	--OE Parents
+	-----------------
+	SELECT OL.item_no AS ITEM, IM2.item_desc_1 AS ItemDesc1, IM2.item_desc_2 AS ItemDesc2, 
+				  CASE WHEN ltrim(OH.cus_no) = '999999' THEN 'STOCK'
+				       ELSE 'SALE' 
+				  END AS [PO/SLS], --CASE WHEN CONVERT(varchar(10), 
+				  --OH.shipping_dt, 101) < GETDATE() THEN CONVERT(VARCHAR(10), DATEADD(day, 0, GETDATE()), 101) ELSE 
+				  CONVERT(varchar(10),OH.shipping_dt, 101) --END 
+				  AS [SHP/RECV DT], 
+				  CASE WHEN ltrim(OH.cus_no) = '999999' THEN OL.qty_to_ship  
+					   ELSE OL.qty_to_ship * - 1 
+				  END AS QTY, 
+				  '' AS [PROJ QOH], 
+				  CAST(RTRIM(LTRIM(OH.ord_no)) AS VARCHAR) AS [ORDER], OH.ship_to_name AS [VEND/CUS], 
+				  CONVERT(varchar(10), OH.entered_dt, 101) AS [ORDER DATE], NULL AS [CONTAINER INFO], NULL 
+				  AS [Container Ship To], NULL AS [TRANSFER TO], OL.prod_cat AS [PROD CAT], LTRIM(OH.cus_no) AS [CUS NO], 
+				  IM2.item_note_1 AS CH, OH.cus_alt_adr_cd AS STORE, OL.item_no AS [PARENT ITEM ON SALES ORD], IM2.item_note_4 AS ESS, 
+				  IM2.extra_10 AS usage_ytd,
+				  OH.user_def_fld_3, IM2.extra_1 AS 'ParentFlag', IM2.item_note_5
+	FROM  dbo.oeordhdr_sql AS OH INNER JOIN
+				  dbo.oeordlin_sql AS OL ON OL.ord_no = OH.ord_no INNER JOIN
+				  dbo.imitmidx_sql AS IM2 ON IM2.item_no = OL.item_no LEFT OUTER JOIN
+					  (SELECT DISTINCT PL.item_no
+					   FROM   dbo.poordlin_sql AS PL INNER JOIN
+									  dbo.poordhdr_sql AS PH ON PH.ord_no = PL.ord_no
+					   WHERE (PH.ord_dt > DATEADD(DAY, - 365, GETDATE()))) AS PURCH_LAST_YR ON PURCH_LAST_YR.item_no = IM2.item_no
+				  --LEFT OUTER JOIN Z_IMINVLOC_USAGE USG ON USG.item_no = IM2.item_no
+	WHERE (OH.ord_type = 'O') 
+					AND ((CAST(LTRIM(OL.ord_no) AS VARCHAR) + IM2.item_no + CAST(CAST(OL.qty_to_ship AS INT) AS VARCHAR)) NOT IN
+					  (SELECT CAST(LTRIM(Ord_no) AS VARCHAR) + item_no + CAST(SUM(Qty) AS VARCHAR) AS Expr1
+					   FROM   dbo.wsPikPak
+					   WHERE (Shipped = 'Y')
+					   GROUP BY Ord_no, Item_no))
+					--Test
+					--AND IM2.item_no = 'AB060 0300X9600'
+					--All CR parents
+					AND IM2.prod_cat IN ('036', '037', '111', '336', '102')
 
 	UNION ALL
 
-	SELECT BM.comp_item_no AS ITEM, BMIM.item_desc_1 AS ItemDesc1, BMIM.item_desc_2 AS ItemDesc2, 'SALE' AS [PO/SLS], 
+	-----------------
+	--OE Components
+	-----------------
+	SELECT BM.comp_item_no AS ITEM, BMIM.item_desc_1 AS ItemDesc1, BMIM.item_desc_2 AS ItemDesc2, 
+		  CASE WHEN ltrim(OH.cus_no) = '999999' THEN 'STOCK'
+			   ELSE 'SALE' 
+		   END AS [PO/SLS],  
 		--CASE WHEN CONVERT(varchar(10), OH.shipping_dt, 101) < GETDATE() THEN CONVERT(VARCHAR(10), DATEADD(day, 0, GETDATE()), 101) 
 			 --ELSE 
 			 CONVERT(varchar(10), OH.shipping_dt, 101) --END 
-			 AS [SHP/RECV DT], CAST(OL.qty_to_ship AS INT) * BM.qty_per_par * - 1 AS QTY, 
+			 AS [SHP/RECV DT], 
+			 CASE WHEN ltrim(OH.cus_no) = '999999' THEN OL.qty_to_ship  
+				  ELSE OL.qty_to_ship * - 1 
+			 END AS QTY,
 		'' AS [PROJ QOH], CAST(RTRIM(LTRIM(OH.ord_no)) AS VARCHAR) AS [ORDER], OH.ship_to_name AS [VEND/CUS], CONVERT(varchar(10), OH.entered_dt, 101) AS [ORDER DATE], NULL AS [CONTAINER INFO], 
 	NULL  AS [Container Ship To], NULL AS [TRANSFER TO], BMIM.prod_cat AS [PROD CAT], LTRIM(OH.cus_no) AS [CUS NO], BMIM.item_note_1 AS CH, 
 	 OH.cus_alt_adr_cd AS STORE, OL.item_no AS [PARENT ITEM ON SALES ORD], BMIM.item_note_4 AS ESS, 
@@ -130,48 +180,17 @@ FROM  dbo.imitmidx_sql IM JOIN
 					   WHERE (PH.ord_dt > DATEADD(DAY, - 365, GETDATE()))) AS PURCH_LAST_YR ON PURCH_LAST_YR.item_no = BM.comp_item_no 
 				  LEFT OUTER JOIN dbo.imitmidx_sql AS BMIM ON BMIM.item_no = BM.comp_item_no
 				  --LEFT OUTER JOIN Z_IMINVLOC_USAGE USG ON USG.item_no = BMIM.item_no
-	WHERE (OH.ord_type = 'O') AND (IM2.prod_cat IN ('036', '037', '111', '336', '102')) AND (OL.loc NOT IN ('BR', 'IN', 'CAN')) 
+	WHERE (OH.ord_type = 'O') 
 			AND ((CAST(LTRIM(OL.ord_no) AS VARCHAR) + IM2.item_no + CAST(CAST(OL.qty_to_ship AS INT) AS VARCHAR)) NOT IN
 					  (SELECT CAST(LTRIM(Ord_no) AS VARCHAR) + item_no + CAST(SUM(Qty) AS VARCHAR) AS Expr1
 					   FROM   dbo.wsPikPak
 					   WHERE (Shipped = 'Y')
 					   GROUP BY Ord_no, Item_no))
-		   --Expand the list to include china prod cat items even if not purchased last year
-			AND (PURCH_LAST_YR.item_no IS NOT NULL OR (IM2.prod_cat IN ('036', '037', '111', '336', '102')))
+		   --All CR parents
+			AND IM2.prod_cat IN ('036', '037', '111', '336', '102')
 		   --Test
-		   --AND BMIM.item_no = '11491 LONG SIDE'
+		   --AND BMIM.item_no = 'AB060 0300X9600'
 	                   
-	UNION ALL
-
-	SELECT OL.item_no AS ITEM, IM2.item_desc_1 AS ItemDesc1, IM2.item_desc_2 AS ItemDesc2, 'SALE' AS [PO/SLS], --CASE WHEN CONVERT(varchar(10), 
-				  --OH.shipping_dt, 101) < GETDATE() THEN CONVERT(VARCHAR(10), DATEADD(day, 0, GETDATE()), 101) ELSE 
-				  CONVERT(varchar(10),OH.shipping_dt, 101) --END 
-				  AS [SHP/RECV DT], OL.qty_to_ship * - 1 AS QTY, '' AS [PROJ QOH], 
-				  CAST(RTRIM(LTRIM(OH.ord_no)) AS VARCHAR) AS [ORDER], OH.ship_to_name AS [VEND/CUS], 
-				  CONVERT(varchar(10), OH.entered_dt, 101) AS [ORDER DATE], NULL AS [CONTAINER INFO], NULL 
-				  AS [Container Ship To], NULL AS [TRANSFER TO], OL.prod_cat AS [PROD CAT], LTRIM(OH.cus_no) AS [CUS NO], 
-				  IM2.item_note_1 AS CH, OH.cus_alt_adr_cd AS STORE, OL.item_no AS [PARENT ITEM ON SALES ORD], IM2.item_note_4 AS ESS, 
-				  IM2.extra_10 AS usage_ytd,
-				  OH.user_def_fld_3, IM2.extra_1 AS 'ParentFlag', IM2.item_note_5
-	FROM  dbo.oeordhdr_sql AS OH INNER JOIN
-				  dbo.oeordlin_sql AS OL ON OL.ord_no = OH.ord_no INNER JOIN
-				  dbo.imitmidx_sql AS IM2 ON IM2.item_no = OL.item_no LEFT OUTER JOIN
-					  (SELECT DISTINCT PL.item_no
-					   FROM   dbo.poordlin_sql AS PL INNER JOIN
-									  dbo.poordhdr_sql AS PH ON PH.ord_no = PL.ord_no
-					   WHERE (PH.ord_dt > DATEADD(DAY, - 365, GETDATE()))) AS PURCH_LAST_YR ON PURCH_LAST_YR.item_no = IM2.item_no
-				  --LEFT OUTER JOIN Z_IMINVLOC_USAGE USG ON USG.item_no = IM2.item_no
-	WHERE (OH.ord_type = 'O') AND (IM2.prod_cat IN ('036', '037', '111', '336', '102')) 
-					AND (OL.loc NOT IN ('BR', 'IN', 'CAN')) 
-					AND ((CAST(LTRIM(OL.ord_no) AS VARCHAR) + IM2.item_no + CAST(CAST(OL.qty_to_ship AS INT) AS VARCHAR)) NOT IN
-					  (SELECT CAST(LTRIM(Ord_no) AS VARCHAR) + item_no + CAST(SUM(Qty) AS VARCHAR) AS Expr1
-					   FROM   dbo.wsPikPak
-					   WHERE (Shipped = 'Y')
-					   GROUP BY Ord_no, Item_no))
-					--Test
-					--AND IM2.item_no = 'DRY-EP 01 BV'
-					--Expand the list to include china prod cat items even if not purchased last year
-					AND (PURCH_LAST_YR.item_no IS NOT NULL OR (IM2.prod_cat IN ('036', '037', '111', '336', '102')))
 	) AS HolyGrail ON IM.item_no = HolyGrail.Item
 	LEFT OUTER JOIN oeordhdr_sql OH ON ltrim(OH.ord_no) = HolyGrail.[Ord#]
 WHERE ltrim(OH.ord_no) not like '7%' OR OH.ord_no is null

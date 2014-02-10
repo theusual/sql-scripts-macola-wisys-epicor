@@ -203,7 +203,7 @@ FROM  dbo.Z_IMINVLOC AS Z_IMINVLOC WITH (NOLOCK) INNER JOIN
                dbo.Z_IMINVLOC_USAGE WITH (NOLOCK) ON dbo.Z_IMINVLOC_USAGE.item_no = Z_IMINVLOC.item_no LEFT OUTER JOIN
                dbo.Z_IMINVLOC_QOH_CHECK AS QC WITH (NOLOCK) ON QC.item_no = Z_IMINVLOC.item_no LEFT OUTER JOIN
                dbo.BG_WM_Current_Projections AS PROJ WITH (NOLOCK) ON PROJ.item_no = IMITMIDX_SQL.item_no 
-WHERE  (Z_IMINVLOC.prod_cat IN ('036', '037', '111', '336', '102')) 
+WHERE  (Z_IMINVLOC.prod_cat IN ('036', '037', '111', '336', '102','337')) 
 		AND IMITMIDX_SQL.activity_cd = 'A'
 		--Test
 		--AND IMITMIDX_SQL.item_no = '23" SPT BAR GB' 

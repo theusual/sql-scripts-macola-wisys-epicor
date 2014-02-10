@@ -13,7 +13,7 @@ select DISTINCT top 100 percent IL.item_no [Parent],
 			 THEN IL.qty_on_hand
 			 WHEN PROJ.qty_proj is null 
 			 THEN IL.qty_on_hand - QALL.qty_allocated
-			 ELSE IL.qty_on_hand - (QALL.qty_allocated - PROJ.qty_proj)
+			 ELSE IL.qty_on_hand - QALL.qty_allocated - PROJ.qty_proj
 		END AS [Current Inv (UnAllocated)],
 		qty_on_hand AS QOH,
 		CASE WHEN QALL.qty_allocated IS NULL
@@ -50,33 +50,106 @@ select DISTINCT top 100 percent IL.item_no [Parent],
 		END AS [May 2014],
 		CASE WHEN PO_DT.[SHP/RECV DT] is null THEN 'N/A'
 			 ELSE PO_DT.[SHP/RECV DT] 
-		END AS [PROD COMPL DT]
+		END AS [PROD COMPL DT],
+		USG_MTD.USG AS USG_MTD,
+		USG_PREV_MO.USG AS USG_PREV_MO,
+		USG_YTD.USG AS USG_YTD
 from z_iminvloc IL JOIN imitmidx_sql IM ON IM.item_no = IL.item_no
 				   LEFT OUTER JOIN bmprdstr_sql AS BM on BM.item_no = IL.item_no
 				   LEFT OUTER JOIN edcitmfl_sql AS EDI on EDI.mac_item_num = IL.item_no
-				   LEFT OUTER JOIN Z_IMINVLOC_QALL QALL ON QALL.item_no = BM.item_no
-				   LEFT OUTER JOIN BG_WM_Current_Projections AS PROJ on PROJ.item_no = IL.item_no
+				   LEFT OUTER JOIN Z_IMINVLOC_QALL_WM QALL ON QALL.item_no = BM.item_no
+				   LEFT OUTER JOIN 
+						(
+						     SELECT SUM(qty_proj) AS qty_proj, item_no
+							 FROM (
+								 SELECT  SUM(OL.qty_to_ship) AS qty_proj, OL.item_no
+								 FROM oeordhdr_Sql OH JOIN oeordlin_sql OL ON OH.ord_no = OL.ord_no
+								 WHERE ltrim(OH.cus_no) = '23033'
+									AND ((NOT OH.user_def_fld_3 like '%ON%'
+									AND NOT OH.user_def_fld_3 like '%FR%')
+									OR OH.user_def_fld_3 is null)
+								 GROUP BY OL.item_no
+								 UNION ALL
+								 SELECT SUM(OL.qty_to_ship*BM.qty_per_par) AS QTY_PROJ_MO, BM.comp_item_no
+								 FROM oeordhdr_Sql OH JOIN oeordlin_sql OL ON OH.ord_no = OL.ord_no
+													  JOIN bmprdstr_sql BM ON BM.item_no = OL.item_no
+								 WHERE ltrim(OH.cus_no) = '23033'
+									AND ((NOT OH.user_def_fld_3 like '%ON%'
+									AND NOT OH.user_def_fld_3 like '%FR%')
+									OR OH.user_def_fld_3 is null)
+								 GROUP BY BM.comp_item_no
+								 ) AS temp
+							GROUP BY temp.item_no
+						) PROJ on PROJ.item_no = IL.item_no
+				   LEFT OUTER JOIN
+						(SELECT SUM(OL.qty_to_ship-OL.qty_return_to_stk) AS USG, item_no
+						 FROM oehdrhst_sql OH JOIN oelinhst_Sql OL ON OL.inv_no = OH.inv_no
+						 WHERE ltrim(OH.cus_no)='1575'
+								--This month
+								AND month(OH.inv_dt) = month(GETDATE()) AND YEAR(OH.inv_dt) = YEAR(GETDATE())
+									AND ((NOT OH.user_def_fld_3 like '%ON%'
+									AND NOT OH.user_def_fld_3 like '%FR%')
+									OR OH.user_def_fld_3 is null)
+						 GROUP BY item_no
+						 ) AS USG_MTD ON USG_MTD.item_no = IM.item_no
+				   LEFT OUTER JOIN
+						(SELECT SUM(OL.qty_to_ship-OL.qty_return_to_stk) AS USG, item_no
+						 FROM oehdrhst_sql OH JOIN oelinhst_Sql OL ON OL.inv_no = OH.inv_no
+						 WHERE ltrim(OH.cus_no)='1575'
+									AND ((NOT OH.user_def_fld_3 like '%ON%'
+									AND NOT OH.user_def_fld_3 like '%FR%')
+									OR OH.user_def_fld_3 is null)
+								--This year
+								AND YEAR(OH.inv_dt) = year(GETDATE())
+						 GROUP BY item_no
+						 ) AS USG_YTD ON USG_YTD.item_no = IM.item_no
+				   				   LEFT OUTER JOIN
+						(SELECT SUM(OL.qty_to_ship-OL.qty_return_to_stk) AS USG, item_no
+						 FROM oehdrhst_sql OH JOIN oelinhst_Sql OL ON OL.inv_no = OH.inv_no
+						 WHERE ltrim(OH.cus_no)='1575'
+									AND ((NOT OH.user_def_fld_3 like '%ON%'
+									AND NOT OH.user_def_fld_3 like '%FR%')
+									OR OH.user_def_fld_3 is null)
+								--Previous month
+								AND (MONTH(OH.inv_dt) = (month(GETDATE()) - 1) AND YEAR(OH.inv_dt) = YEAR(GETDATE())
+								OR
+								MONTH(OH.inv_dt) = 12 AND (month(GETDATE()) - 1) = 0 AND YEAR(OH.inv_dt) = YEAR(GETDATE())-1)
+						 GROUP BY item_no
+						 ) AS USG_PREV_MO ON USG_PREV_MO.item_no = IM.item_no
 				   LEFT OUTER JOIN 
 						(SELECT month(shipping_dt) AS [MONTH], SUM(OL.qty_to_ship) AS QTY_PROJ_MO, OL.item_no
 						 FROM oeordhdr_Sql OH JOIN oeordlin_sql OL ON OH.ord_no = OL.ord_no
 						 WHERE ltrim(OH.cus_no) = '23033'
+									AND ((NOT OH.user_def_fld_3 like '%ON%'
+									AND NOT OH.user_def_fld_3 like '%FR%')
+									OR OH.user_def_fld_3 is null)
 						 GROUP BY month(shipping_dt), OL.item_no
 						 UNION ALL
 						 SELECT month(shipping_dt) AS [MONTH], SUM(OL.qty_to_ship*BM.qty_per_par) AS QTY_PROJ_MO, BM.comp_item_no
 						 FROM oeordhdr_Sql OH JOIN oeordlin_sql OL ON OH.ord_no = OL.ord_no
 											  JOIN bmprdstr_sql BM ON BM.item_no = OL.item_no
 						 WHERE ltrim(OH.cus_no) = '23033'
+									AND ((NOT OH.user_def_fld_3 like '%ON%'
+									AND NOT OH.user_def_fld_3 like '%FR%')
+									OR OH.user_def_fld_3 is null)
 						 GROUP BY month(shipping_dt), BM.comp_item_no) AS PROJ_MO ON PROJ_MO.item_no = IL.item_no 	
 				   LEFT OUTER JOIN 
-						(select item_no, SUM(qty_to_ship) AS MONTHLY_ALL
-						from oeordhdr_Sql OH JOIN oeordlin_sql OL ON OL.orD_no = OH.ord_no
+						(select OL.item_no, SUM(qty_to_ship) AS MONTHLY_ALL
+						from oeordhdr_Sql OH JOIN oeordlin_sql OL ON OL.ord_no = OH.ord_no
+						                     LEFT OUTER JOIN wspikpak PP ON PP.line_no = OL.line_no and PP.ord_no = OL.ord_no
 						WHERE month(OH.shipping_dt) = month(GETDATE()) AND ltrim(OH.cus_no) = '1575'
-						GROUP BY item_no
+						      AND (pp.shipped = 'N' OR pp.shipped is null)
+						GROUP BY OL.item_no
 						UNION ALL
 						SELECT BM.comp_item_no, SUM(OL.qty_to_ship*BM.qty_per_par) AS QTY_PROJ_MO 
 						FROM oeordhdr_Sql OH JOIN oeordlin_sql OL ON OH.ord_no = OL.ord_no
 											  JOIN bmprdstr_sql BM ON BM.item_no = OL.item_no
+											  LEFT OUTER JOIN wspikpak PP ON PP.line_no = OL.line_no and PP.ord_no = OL.ord_no
 						WHERE ltrim(OH.cus_no) = '1575'
+									AND ((NOT OH.user_def_fld_3 like '%ON%'
+									AND NOT OH.user_def_fld_3 like '%FR%')
+									OR OH.user_def_fld_3 is null)
+							  AND (pp.shipped = 'N' OR pp.shipped is null)
 						GROUP BY month(shipping_dt), BM.comp_item_no) AS MNTH_ALL ON MNTH_ALL.item_no = IL.item_no		
 				  LEFT OUTER JOIN
 						(SELECT        SUM([Feb 2014]) AS [Feb 2014],
