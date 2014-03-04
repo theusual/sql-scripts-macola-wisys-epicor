@@ -9,7 +9,7 @@ GO
 --Purpose: View for Remis EOD 90 days back
 --Last Change: --
 
-SELECT  oeordlin_Sql.user_def_fld_3 AS [ShipDt], 
+SELECT   oeordlin_Sql.user_def_fld_3 AS [ShipDt], 
 		substring(oeordlin_sql.user_def_fld_4, 1, (charindex(',', oeordlin_sql.user_def_fld_4) - 1)) AS [Carrier], 
 		substring(oeordlin_sql.user_def_fld_4, (charindex(',', oeordlin_sql.user_def_fld_4)+1), LEN(oeordlin_sql.user_Def_Fld_4)) AS [TrackingNo], 
 				CONVERT(varchar, CAST(RTRIM(OEORDHDR_SQL.shipping_dt) AS datetime), 101) AS [EstShippingDt], 
@@ -26,6 +26,7 @@ FROM  dbo.oeordhdr_sql AS OEORDHDR_SQL INNER JOIN
                dbo.jobfile_sql AS JOB ON JOB.job_no = OEORDHDR_SQL.job_no LEFT OUTER JOIN
                dbo.OELINCMT_SQL AS CMT ON CMT.ord_no = OEORDHDR_SQL.ord_no AND CMT.line_seq_no = OEORDLIN_SQL.line_no
 WHERE (OEORDHDR_SQL.ord_type = 'O') AND (OEORDLIN_SQL.user_def_fld_3 IS NOT NULL) AND OEORDLIN_SQL.user_def_fld_3 > (DATEADD(day, - 91, GETDATE()))
+      AND OEORDLIN_SQL.user_def_fld_3 < (DATEADD(day, 25, GETDATE()))
 UNION ALL
 SELECT  OL.user_def_fld_3 AS [ShipDt], 
 		substring(OL.user_def_fld_4, 1, (charindex(',', OL.user_def_fld_4) - 1)) AS [Carrier], 

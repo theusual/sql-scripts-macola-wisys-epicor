@@ -1,7 +1,7 @@
 --Created:	1/9/14	     By:	BG
---Last Updated:	1/9/14	 By:	BG
+--Last Updated:	2/26/14	 By:	BG
 --Purpose: Case refurb version of china ordering report [BG_Daily_CH_Order_Report]
---Last Change:  --
+--Last Change:  Added stock order qty, avg qps ytd, and sls count columns
 
 USE [001]
 GO
@@ -195,7 +195,10 @@ SELECT TOP (100) PERCENT '___' AS LN,
        CAST(ROUND(Z_IMINVLOC.last_cost, 2, 0) AS DECIMAL(8, 2)) AS LC, 
        CAST(ROUND(Z_IMINVLOC.std_cost, 2, 0) AS DECIMAL(8, 2)) AS SC, 
        IMITMIDX_SQL.drawing_release_no AS [Dwg #], 
-       IMITMIDX_SQL.drawing_revision_no AS [Dwg Rev]              
+       IMITMIDX_SQL.drawing_revision_no AS [Dwg Rev],
+	   SLS_COUNT.[COUNT] AS [SLS COUNT YTD],
+	   ROUND((Z_IMINVLOC_USAGE.usage_ytd / SLS_COUNT.[COUNT]),0) AS [AVG QPS YTD],
+	   STOCK_ORDER.QTY AS [STOCK ORD QTY]	          
            
 FROM  dbo.Z_IMINVLOC AS Z_IMINVLOC WITH (NOLOCK) INNER JOIN
                dbo.imitmidx_sql AS IMITMIDX_SQL WITH (NOLOCK) ON Z_IMINVLOC.item_no = IMITMIDX_SQL.item_no LEFT OUTER JOIN
@@ -203,6 +206,8 @@ FROM  dbo.Z_IMINVLOC AS Z_IMINVLOC WITH (NOLOCK) INNER JOIN
                dbo.Z_IMINVLOC_USAGE WITH (NOLOCK) ON dbo.Z_IMINVLOC_USAGE.item_no = Z_IMINVLOC.item_no LEFT OUTER JOIN
                dbo.Z_IMINVLOC_QOH_CHECK AS QC WITH (NOLOCK) ON QC.item_no = Z_IMINVLOC.item_no LEFT OUTER JOIN
                dbo.BG_WM_Current_Projections AS PROJ WITH (NOLOCK) ON PROJ.item_no = IMITMIDX_SQL.item_no 
+			   LEFT OUTER JOIN BG_OE_SALESORDER_COUNT_YTD AS SLS_COUNT ON SLS_COUNT.item_no = IMITMIDX_SQL.item_no
+			   LEFT OUTER JOIN BG_OE_STOCK_ORDER_QTY AS STOCK_ORDER ON STOCK_ORDER.item_no = IMITMIDX_SQL.item_no
 WHERE  (Z_IMINVLOC.prod_cat IN ('036', '037', '111', '336', '102','337')) 
 		AND IMITMIDX_SQL.activity_cd = 'A'
 		--Test

@@ -37,10 +37,18 @@ SELECT TOP (100) PERCENT ID, bkjrcode AS [Financial year], reknr AS [General led
        IBTDeliveryNr AS [IBT delivery number], Routing, Step, Reasoncode AS [Reason code], Checked, Reviewed, Shipment, 
        TransactionNumber AS [Transaction number], Type, Status, UniqueSeqNo, RevaluationCurrency, LineType AS [Line type]
 FROM  dbo.gbkmut
-WHERE bkstnr LIKE '13902727%'
+WHERE bkstnr LIKE '15103426%'
 ORDER BY syscreated
 
---SELECT * FROM
---DELETE FROM 
---dbo.gbkmut
---WHERE ID IN ('2925795','2925796')
+
+--Backup:
+SELECT *
+INTO [BG_BACKUP].dbo.[gbkmut_deleted_entries_2_26_14-2]
+FROM gbkmut
+WHERE ID IN ('2815620','2815621')
+
+BEGIN TRAN
+DELETE FROM 
+dbo.gbkmut
+WHERE ID IN ('2815620','2815621')
+COMMIT TRAN

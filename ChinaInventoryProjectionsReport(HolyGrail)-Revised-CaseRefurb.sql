@@ -38,7 +38,7 @@ FROM  dbo.imitmidx_sql IM JOIN
 				  PURCH_LAST_YR.item_no = IM2.item_no
 			--LEFT OUTER JOIN Z_IMINVLOC_USAGE USG ON USG.item_no = IM.item_no
 	WHERE (IM2.prod_cat IN ('036', '037', '111', '336', '102')) 
-		  --AND IM2.item_no = 'AB060 0300X9600'
+		  --AND IM2.item_no = 'Interior Label'
 		  
 	UNION ALL
 
@@ -65,8 +65,9 @@ FROM  dbo.imitmidx_sql IM JOIN
 					   GROUP BY Ord_no, Item_no))
 		   --All CR Items
 		   AND (IM.prod_cat IN ('111', '036', '336', '102', '037'))
+		   AND BMIM.prod_cat NOT IN ('038')
 		   --Test
-		   --AND BMIM.item_no = 'AB060 0300X9600'
+		   --AND BMIM.item_no = 'Interior Label'
 
 	UNION ALL
 
@@ -162,8 +163,8 @@ FROM  dbo.imitmidx_sql IM JOIN
 			 --ELSE 
 			 CONVERT(varchar(10), OH.shipping_dt, 101) --END 
 			 AS [SHP/RECV DT], 
-			 CASE WHEN ltrim(OH.cus_no) = '999999' THEN OL.qty_to_ship  
-				  ELSE OL.qty_to_ship * - 1 
+			 CASE WHEN ltrim(OH.cus_no) = '999999' THEN OL.qty_to_ship * BM.qty_per_par  
+				  ELSE OL.qty_to_ship * BM.qty_per_par * - 1.00 
 			 END AS QTY,
 		'' AS [PROJ QOH], CAST(RTRIM(LTRIM(OH.ord_no)) AS VARCHAR) AS [ORDER], OH.ship_to_name AS [VEND/CUS], CONVERT(varchar(10), OH.entered_dt, 101) AS [ORDER DATE], NULL AS [CONTAINER INFO], 
 	NULL  AS [Container Ship To], NULL AS [TRANSFER TO], BMIM.prod_cat AS [PROD CAT], LTRIM(OH.cus_no) AS [CUS NO], BMIM.item_note_1 AS CH, 
@@ -188,12 +189,14 @@ FROM  dbo.imitmidx_sql IM JOIN
 					   GROUP BY Ord_no, Item_no))
 		   --All CR parents
 			AND IM2.prod_cat IN ('036', '037', '111', '336', '102')
+			AND BMIM.prod_cat NOT IN ('038')
 		   --Test
-		   --AND BMIM.item_no = 'AB060 0300X9600'
+		    --AND BMIM.item_no = 'Interior Label'
 	                   
 	) AS HolyGrail ON IM.item_no = HolyGrail.Item
 	LEFT OUTER JOIN oeordhdr_sql OH ON ltrim(OH.ord_no) = HolyGrail.[Ord#]
-WHERE ltrim(OH.ord_no) not like '7%' OR OH.ord_no is null
+--WHERE   Item = 'Interior Label'
+		--ltrim(OH.ord_no) not like '7%' OR OH.ord_no is null
 ORDER BY Item, [SHP OR RECV DT]
 
 /*  Old version replaced on 1/8/14:

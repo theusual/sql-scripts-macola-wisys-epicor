@@ -50,6 +50,8 @@ WHERE     (OH.ord_type = 'O') AND (LTRIM(OH.cus_no) NOT IN ('23033', '24033', '3
 			AND (OL.loc NOT IN ('CAN','IN', 'BR', 'IT')) AND (INVWS.loc = 'WS')
 			--If no shipment record or if total qty shipped < total qty ordered (split shipped line)
 			AND (pp.SumQty is null OR pp.SumQty < OL.tot_qty_ordered)
+			--Test
+			--AND OH.ord_no = ' 2034460'
 GROUP BY OH.entered_dt, AUD_DTS.aud_dt_min, AUD_LAST.aud_Dt, AUD_LAST.aud_action, AUD_LAST.user_name, AUD_DTS.aud_dt_max, 
 		OH.mfg_loc, OL.loc, OH.shipping_dt, OH.ord_no, OH.cus_no, OH.ship_to_name, OH.ship_to_addr_2, OH.ship_to_addr_4, 
 		OL.qty_ordered, OL.item_no, CMT.line_seq_no, OH.ship_instruction_1, OH.ship_instruction_2, IM.prod_cat, OL.line_no, 

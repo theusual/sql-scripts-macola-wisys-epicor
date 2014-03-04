@@ -1,6 +1,5 @@
 --All ED* Tables in ES:
 
-
 --Empty
 SELECT * FROM dbo.edablkfl_sql 
 --Empty
@@ -19,7 +18,8 @@ SELECT * FROM dbo.edbbcifl_sql
 SELECT * FROM EDCAUDFL_SQL AS EDIAudit
 --Stores details of the inbound EDI document
 SELECT CAST(date_created_yy AS VARCHAR) + CAST(date_created_mm AS VARCHAR) + CAST(date_created_dd AS VARCHAR) AS Date,* 
-FROM dbo.edccapfl_sql AS EDI_Inbound    ORDER BY Date DESC
+FROM dbo.edccapfl_sql AS EDI_Inbound
+WHERE date_outbound_yy = 14  AND date_outbound_dd = 24  ORDER BY Date DESC
 --?
 SELECT  * FROM    dbo.edcchgfl_sql 
 --EDI Setup File For Translator
@@ -31,6 +31,7 @@ SELECT * FROM dbo.edclogfl_sql
 --maintains the OE relationship between the Macola sales order and the EDI PO
 SELECT CAST(date_created_yy AS VARCHAR) + CAST(date_created_mm AS VARCHAR) + CAST(date_created_dd AS VARCHAR) AS Date, * 
 FROM dbo.edcsdqfl_sql AS EDI_OE_Xref
+WHERE ltrim(customer_num) != '1575'
 --GLN Cross Reference -- Stores Shipping Addresses
 SELECT * FROM dbo.edcshtfl_sql 
 --Carrier code (SCAC) cross reference

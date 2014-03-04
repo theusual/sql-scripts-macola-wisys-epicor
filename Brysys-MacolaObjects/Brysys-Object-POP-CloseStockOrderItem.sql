@@ -109,6 +109,7 @@ IF @ParentQty > @LineQty
 
 PRINT 'VALIDATIONS PASSED: @ParentItem = ' + @ParentItem + ', @InvLoc = ' + @InvLoc + ', @OrdNo = ' + @OrdNo + ', @ParentQty = ' + CAST(@ParentQty AS VARCHAR)+ ', @UserName = ' + @UserName + ', @comment1 = ' + @Comment1
 PRINT '...'
+
 ------------------------------------------
 --Issue components of line item (if exist)
 ------------------------------------------

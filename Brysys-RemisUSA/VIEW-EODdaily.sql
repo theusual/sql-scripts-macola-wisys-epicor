@@ -26,6 +26,7 @@ FROM  dbo.oeordhdr_sql AS OEORDHDR_SQL INNER JOIN
                dbo.jobfile_sql AS JOB ON JOB.job_no = OEORDHDR_SQL.job_no LEFT OUTER JOIN
                dbo.OELINCMT_SQL AS CMT ON CMT.ord_no = OEORDHDR_SQL.ord_no AND CMT.line_seq_no = OEORDLIN_SQL.line_no
 WHERE (OEORDHDR_SQL.ord_type = 'O') AND (OEORDLIN_SQL.user_def_fld_3 IS NOT NULL) AND OEORDLIN_SQL.user_def_fld_3 > (DATEADD(day, - 1, GETDATE()))
+       AND OEORDLIN_SQL.user_def_fld_3 < (DATEADD(day, 25, GETDATE()))
 UNION ALL
 SELECT  OL.user_def_fld_3 AS [ShipDt], 
 		substring(OL.user_def_fld_4, 1, (charindex(',', OL.user_def_fld_4) - 1)) AS [Carrier], 
@@ -44,3 +45,4 @@ FROM  dbo.oehdrhst_sql AS OH INNER JOIN
                dbo.jobfile_sql AS JOB ON JOB.job_no = OH.job_no LEFT OUTER JOIN
                dbo.OELINCMT_SQL AS CMT ON CMT.ord_no = OH.ord_no AND CMT.line_seq_no = OL.line_no
 WHERE (OH.ord_type = 'O') AND (OL.user_def_fld_3 IS NOT NULL) AND OL.user_def_fld_3 > (DATEADD(day, - 1, GETDATE()))
+      AND OL.user_def_fld_3 < (DATEADD(day, 25, GETDATE()))

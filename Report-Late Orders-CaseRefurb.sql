@@ -29,10 +29,10 @@ WHERE (NOT (dbo.oeordhdr_sql.oe_po_no = 'BRUCE' OR
                AND NOT dbo.oeordlin_sql.loc = 'IT' 
                AND NOT dbo.oeordhdr_sql.user_def_fld_5 IS NULL              
                AND ((dbo.oeordlin_sql.user_def_fld_1 NOT LIKE '%PROJECTION%') OR (dbo.oeordlin_sql.user_def_fld_1 NOT LIKE '%STOCK%') OR (dbo.oeordlin_sql.user_def_fld_1 IS NULL))
-               AND NOT (dbo.oeordhdr_sql.oe_po_no LIKE '%stock%') 
+               --AND NOT (dbo.oeordhdr_sql.oe_po_no LIKE '%stock%') 
                AND NOT (dbo.oeordlin_sql.item_no LIKE '%TEST%') 
                AND NOT (LTRIM(RTRIM(dbo.oeordhdr_sql.cus_no)) IN ('11575', '23033', '9999'))
                AND dbo.oeordlin_sql.shipped_dt IS NULL
                --Test order:
-               --AND dbo.oeordhdr_sql.ord_no = ' 1006775'
+               --AND dbo.oeordhdr_sql.ord_no = ' 1007398'
 ORDER BY [Ship From], dbo.oeordhdr_sql.ord_no

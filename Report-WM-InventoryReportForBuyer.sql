@@ -36,9 +36,6 @@ select DISTINCT top 100 percent IL.item_no [Parent],
 			 ELSE (PROJ_MO.MONTH + 1) 
 		END AS MONTH,
 		IL.qty_on_ord AS [IN PRODUCTION],
-		CASE WHEN Forecast.[Feb 2014] IS NULL THEN 0
-			 ELSE Forecast.[Feb 2014] 
-		END AS [Feb 2014],
 		CASE WHEN Forecast.[Mar 2014] IS NULL THEN 0
 			 ELSE Forecast.[Mar 2014] 
 		END AS [Mar 2014],
@@ -48,6 +45,9 @@ select DISTINCT top 100 percent IL.item_no [Parent],
 		CASE WHEN Forecast.[May 2014] IS NULL THEN 0
 			 ELSE Forecast.[May 2014] 
 		END AS [May 2014],
+		CASE WHEN Forecast.[Jun 2014] IS NULL THEN 0
+			 ELSE Forecast.[Jun 2014] 
+		END AS [Jun 2014],
 		CASE WHEN PO_DT.[SHP/RECV DT] is null THEN 'N/A'
 			 ELSE PO_DT.[SHP/RECV DT] 
 		END AS [PROD COMPL DT],
@@ -156,16 +156,16 @@ from z_iminvloc IL JOIN imitmidx_sql IM ON IM.item_no = IL.item_no
 									   SUM([Mar 2014]) AS [Mar 2014],
 									   SUM([Apr 2014]) AS [Apr 2014], 
 									   SUM([May 2014]) AS [May 2014], 
-									   --SUM([Jun 2014]) AS [Jun 2014], 
-									   --SUM([Jul 2014]) AS [Jul 2014], 
-									   --SUM([Aug 2014]) AS [Aug 2014], 
-									   --SUM([Sep 2013]) AS [Sep 2013], 
-									   --SUM([Oct 2013]) AS [Oct 2013],
-									   --SUM([Nov 2013]) AS [Nov 2013],
-									   --SUM([Dec 2013]) AS [Dec 2013],
+									   SUM([Jun 2014]) AS [Jun 2014], 
+									   SUM([Jul 2014]) AS [Jul 2014], 
+									   SUM([Aug 2014]) AS [Aug 2014], 
+									   SUM([Sep 2014]) AS [Sep 2014], 
+									   SUM([Oct 2014]) AS [Oct 2014],
+									   SUM([Nov 2014]) AS [Nov 2014],
+									   SUM([Dec 2014]) AS [Dec 2014],
 									   --SUM([Jan 2014]) AS [Jan 2014],
 									   [Article], [Marco Item]
-						FROM  dbo.WM_Forecast_2013 AS Forecast 
+						FROM  dbo.WM_Forecast_2014 AS Forecast 
 						GROUP BY [Article], [Marco Item]) AS Forecast ON Forecast.[Marco Item] = IL.item_no
 					LEFT OUTER JOIN
 							   (SELECT PL.item_no, x.[SHP/RECV DT] AS [SHP/RECV DT]

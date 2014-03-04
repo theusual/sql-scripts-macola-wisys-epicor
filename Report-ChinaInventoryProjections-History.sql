@@ -1,5 +1,3 @@
---ALTER VIEW BG_Inventory_Projections_AllPurchased  AS
-
 SELECT DISTINCT TOP 100 PERCENT  Item, ItemDesc1, ItemDesc2, [PO/SLS], [SHP OR RECV DT], [QTY (QOH/QTY SLS/QTY REC)], [PROJ QOH], 
 		IM.item_note_3 AS QPS, ORD#, [VEND/CUS], [ORD DT], 
 		CONTAINER, [CONT. SHP TO], [XFER TO], [PROD CAT], [CUS#/VEND#], 
@@ -66,10 +64,11 @@ FROM  dbo.imitmidx_sql IM JOIN
 	UNION ALL
 
 	SELECT PL.item_no AS ITEM, IM2.item_desc_1 AS ItemDesc1, IM2.item_desc_2 AS ItemDesc2, 'PO' AS [PO/SLS], 
-		CASE WHEN NOT (PL.user_def_fld_2 IS NULL)  THEN PL.user_def_fld_2 
-			 WHEN PL.user_def_fld_2 IS NULL AND NOT (PL.extra_8 IS NULL) AND LEN(PL.extra_8) = 10 THEN CONVERT(varchar(10), 
+		CASE WHEN NOT (PL.receipt_dt is null) THEN PL.receipt_dt
+			 WHEN NOT (PL.user_def_fld_2 IS NULL)  THEN PL.user_def_fld_2 
+			 WHEN NOT (PL.extra_8 IS NULL) AND LEN(PL.extra_8) = 10 THEN CONVERT(varchar(10), 
 	  DATEADD(day, 28, PL.extra_8), 101) 
-			 WHEN PL.user_Def_fld_2 IS NULL AND (PL.extra_8 IS NULL OR LEN(PL.extra_8) != 10) AND LTRIM(PL.vend_no) IN  (SELECT vend_no
+			 WHEN (PL.extra_8 IS NULL OR LEN(PL.extra_8) != 10) AND LTRIM(PL.vend_no) IN  (SELECT vend_no
 				FROM   BG_CH_Vendors) THEN CONVERT(varchar(10), DATEADD(DAY, 90, PH.ord_dt), 101) 
 			 ELSE CONVERT(varchar(10), PL.promise_dt, 101) END AS [SHP/RECV DT], CAST(PL.qty_received AS int) AS QTY, '' AS [PROJ QOH], CAST(LTRIM(SUBSTRING(PL.ord_no, 1, 6)) AS VARCHAR) 
 				  AS [ORDER], AP.vend_name AS [VEND/CUS], CONVERT(varchar(10), PH.ord_dt, 101) AS [ORDER DATE], PL.user_def_fld_1 AS [CONTAINER INFO], PL.user_def_fld_3 AS [Container Ship To], PS.ship_to_desc AS [TRANSFER TO], IM2.prod_cat AS [PROD CAT], LTRIM(PH.vend_no) AS [CUS NO], IM2.item_note_1 AS CH, '' AS STORE, '' AS [PARENT ITEM], IM2.item_note_4 AS ESS, IM2.extra_10 AS usage_ytd, 
@@ -161,7 +160,7 @@ FROM  dbo.imitmidx_sql IM JOIN
 					--Expand the list to include china prod cat items even if not purchased last year
 					--AND (PURCH_LAST_YR.item_no IS NOT NULL OR (IM2.prod_cat LIKE '3%') OR IM2.item_note_1 = 'CH')
 	) AS HolyGrail ON IM.item_no = HolyGrail.Item
-WHERE ([Item] IN ('ST-01 NPKSTDb') 
-	OR [Item] IN (SELECT comp_item_no FROM dbo.bmprdstr_sql WHERE item_no IN ('ST-01 NPKSTDb')))
+WHERE ([Item] IN ('zg049 l') 
+	OR [Item] IN (SELECT comp_item_no FROM dbo.bmprdstr_sql WHERE item_no IN ('zg049 l')))
 	--AND YEAR([SHP OR RECV DT]) = 2013
 ORDER BY Item, [SHP OR RECV DT]

@@ -1,15 +1,15 @@
 --Last month forecast comparison to actual sales  
---Last Updated: 10/1/2013
+--Last Updated: 10/1/2014
 DECLARE @MonthsBack AS INT
 DECLARE @Month AS VARCHAR(20)
 
-SET @MonthsBack = -5
+SET @MonthsBack = -1
 SET @Month = DATENAME(MONTH,DATEADD(MONTH,@MonthsBack,GETDATE()))
 SELECT @Month
 
 SELECT     DISTINCT TOP (100) PERCENT QtyOrd.item_no , EDI.edi_item_num AS SAP#, IM.item_desc_1, IM.item_desc_2, INV.qty_on_hand AS QOH, 
-			QtyOrd.QtyOrd AS [QtyOrd], Forecast.[Jul 2013] AS [Forecast], (Forecast.[Jul 2013] - QtyOrd.QtyOrd) AS [DIFF], 
-			CASE WHEN Forecast.[Jul 2013] IS NULL THEN 'N' ELSE 'Y' END AS [On Forecast?]
+			QtyOrd.QtyOrd AS [QtyOrd], Forecast.[Jan 2014] AS [Forecast], (Forecast.[Jan 2014] - QtyOrd.QtyOrd) AS [DIFF], 
+			CASE WHEN Forecast.[Jan 2014] IS NULL THEN 'N' ELSE 'Y' END AS [On Forecast?]
 FROM         (
 				SELECT SUM(QtyOrd) AS QtyOrd, item_no
 				FROM (
@@ -63,32 +63,33 @@ FROM         (
 				) AS QtyOrd
 			 JOIN edcitmfl_sql EDI ON EDI.mac_item_num = QtyOrd.item_no
              LEFT OUTER JOIN (
-							  SELECT   --SUM([Feb 2013]) AS [Feb 2013],
-									  -- SUM([Mar 2013]) AS [Mar 2013],
-									   --SUM([Apr 2013]) AS [Apr 2013], 
-									   --SUM([May 2013]) AS [May 2013], 
-									   --SUM([Jun 2013]) AS [Jun 2013], 
-									   SUM([Jul 2013]) AS [Jul 2013], 
-									   --SUM([Aug 2013]) AS [Aug 2013], 
-									   --SUM([Sep 2013]) AS [Sep 2013], 
-									   --SUM([Oct 2013]) AS [Oct 2013],
-									   --SUM([Nov 2013]) AS [Nov 2013],
-									   [Article Number]
-							   FROM  dbo.WM_Forecast_2013_July AS Forecast 
-							   GROUP BY [Article Number]
-							   ) AS Forecast ON Forecast.[Article Number] =  CAST(EDI.edi_item_num AS VARCHAR)
+							  SELECT   SUM([Jan 2014]) AS [Jan 2014],
+									   --SUM([Feb 2014]) AS [Feb 2014],
+									  -- SUM([Mar 2014]) AS [Mar 2014],
+									   --SUM([Apr 2014]) AS [Apr 2014], 
+									   --SUM([May 2014]) AS [May 2014], 
+									   --SUM([Jun 2014]) AS [Jun 2014], 
+									   --SUM([Jul 2014]) AS [Jul 2014], 
+									   --SUM([Aug 2014]) AS [Aug 2014], 
+									   --SUM([Sep 2014]) AS [Sep 2014], 
+									   --SUM([Oct 2014]) AS [Oct 2014],
+									   --SUM([Nov 2014]) AS [Nov 2014],
+									   [Article]
+							   FROM  dbo.WM_Forecast_2014_January AS Forecast 
+							   GROUP BY [Article]
+							   ) AS Forecast ON Forecast.[Article] =  CAST(EDI.edi_item_num AS VARCHAR)
 			 JOIN Z_IMINVLOC INV ON INV.item_no = QtyOrd.item_no
 			 JOIN imitmidx_sql AS IM ON IM.item_no = QtyOrd.item_no
 --WHERE QtyOrd.item_no = 'SW00026'
---GROUP BY Tot.item_no, Tot.cus_item_no, INV.qty_on_hand, QtyOrd.QtyOrd, Forecast.[Jun 2013], [Sep 2013]
+--GROUP BY Tot.item_no, Tot.cus_item_no, INV.qty_on_hand, QtyOrd.QtyOrd, Forecast.[Jun 2014], [Sep 2014]
 ORDER BY QtyOrd.item_no DESC
 
 --To check numbers:
-SELECT * FROM dbo.WM_Forecast_2013_May WHERE [Article Number] = '100034476'
+SELECT * FROM dbo.WM_Forecast_2014_January WHERE [Article] = '100034476'
 
 SELECT * 
 FROM oehdrhst_sql OH JOIN oelinhst_sql OL ON OH.inv_no = OL.inv_no 
-WHERE [item_no] = '58685-2 BK'  AND entered_dt > '09/01/2013'              
+WHERE [item_no] = '58685-2 BK'  AND entered_dt > '09/01/2014'              
 
 
 
