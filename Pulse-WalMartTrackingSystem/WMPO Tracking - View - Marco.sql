@@ -1,7 +1,7 @@
 --ALTER VIEW BG_WMPO AS
 
 --Created:	4/27/10			     By:	BG
---Last Updated:	12/2/13			 By:	BG
+--Last Updated:	3/17/14			 By:	BG
 --Purpose:	View for WM PO tracking
 --Last changes: 0) Added completely fake line script at bottom  1a)  Added old PO Num  
 --				1) Added qty_to_ship > 0 to where clause in shipping acknowledgements, and added temp table that calc's a sum of 
@@ -30,8 +30,15 @@ SELECT DISTINCT '838115' AS 'Supplier Acct Number',
 									WHEN OH.cus_alt_adr_cd = '3P' THEN '3P'
 									ELSE 'S' END, 
 			   rtrim(replace(OH.ship_to_addr_2, ',', '')) 
-               AS 'Ship to Street Address', substring(OH.ship_to_addr_4, 1, (charindex(',', OH.ship_to_addr_4) - 1)) AS 'Ship to City', substring(OH.ship_to_addr_4, (charindex(',', 
-               OH.ship_to_addr_4) + 2), 2) AS 'Ship to State', 
+               AS 'Ship to Street Address', 
+			   CASE WHEN charindex(',', OH.ship_to_addr_4) > 0
+					THEN substring(OH.ship_to_addr_4, 1, (charindex(',', OH.ship_to_addr_4) - 1)) 
+				    ELSE substring(OH.ship_to_addr_4, 1, (charindex(' ', OH.ship_to_addr_4) - 1)) 
+				END AS 'Ship to City', 
+			   CASE WHEN charindex(',', OH.ship_to_addr_4) > 0
+					THEN substring(OH.ship_to_addr_4, (charindex(',', OH.ship_to_addr_4) + 2), 2)  
+				    ELSE substring(OH.ship_to_addr_4, (charindex(' ', OH.ship_to_addr_4) + 1), 2) 
+				END AS 'Ship to State', 
                'Carrier SCAC (Standard Carrier Alpha Code) Number' = 
 				   CASE WHEN XX.code IS NULL THEN
 								   (SELECT rtrim(XX.code)
@@ -70,16 +77,16 @@ SELECT DISTINCT '838115' AS 'Supplier Acct Number',
                'Supplier Quantity Shipped' = cast(ShpSum.qty AS int), 
                CASE WHEN qty_to_ship < qty_ordered THEN 'A' ELSE 'C' END AS 'Status', 
                '' AS 'Ship Condition', 'I' AS 'Part Type'
-FROM  OEORDLIN_SQL OL WITH (NOLOCK) INNER JOIN
-               OEORDHDR_SQL OH WITH (NOLOCK) ON OL.ord_no = OH.ord_no INNER JOIN
-               BG_SHIPPED SH WITH (NOLOCK) ON ltrim(OL.ord_no) = ltrim(SH.ord_no) AND OL.line_no = SH.line_no LEFT OUTER JOIN
-               OECUSITM_SQL CI WITH (NOLOCK) ON OL.item_no = CI.item_no AND OH.cus_no = CI.cus_no LEFT OUTER JOIN
-               EDCSHVFL_SQL XX WITH (NOLOCK) ON SH.carrier_cd = XX.mac_ship_via 
-              --LEFT OUTER JOIN imitmidx_sql IM WITH (NOLOCK) ON OL.item_no = IM.item_no               
+FROM  OEORDLIN_SQL OL INNER JOIN
+               OEORDHDR_SQL OH ON OL.ord_no = OH.ord_no INNER JOIN
+               BG_SHIPPED SH ON ltrim(OL.ord_no) = ltrim(SH.ord_no) AND OL.line_no = SH.line_no LEFT OUTER JOIN
+               OECUSITM_SQL CI ON OL.item_no = CI.item_no AND OH.cus_no = CI.cus_no LEFT OUTER JOIN
+               EDCSHVFL_SQL XX ON SH.carrier_cd = XX.mac_ship_via 
+              --LEFT OUTER JOIN imitmidx_sql IM ON OL.item_no = IM.item_no               
                --Line Below Added On 3/6/13:  Adds view to sum qty shipped per load/tracking # for the qty shipped column
                LEFT OUTER JOIN
                (SELECT ord_no, item_no, line_no, SUM(qty) AS qty, tracking_no 
-               FROM dbo.BG_SHIPPED WITH (NOLOCK)
+               FROM dbo.BG_SHIPPED 
                GROUP BY line_no, item_no, tracking_no, ord_no) AS ShpSum ON ShpSum.line_no = SH.line_no  
 					AND ShpSum.ord_no = SH.ord_no AND ShpSum.tracking_no = SH.tracking_no
 WHERE		   (ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000') AND OH.oe_po_no > '0' 
@@ -101,8 +108,8 @@ WHERE		   (ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000') AND OH.oe_po_
                AND (NOT(OH.user_def_Fld_4 LIKE '%RP%') OR OH.user_def_fld_4 IS NULL)
                AND NOT ((OH.ord_no + OL.item_no) IN
                    (SELECT OH.ord_no + item_no
-                    FROM   oehdrhst_sql OH WITH (NOLOCK) JOIN
-                                   oelinhst_sql OL WITH (NOLOCK) ON OH.inv_no = OL.inv_no
+                    FROM   oehdrhst_sql OH JOIN
+                                   oelinhst_sql OL ON OH.inv_no = OL.inv_no
                     WHERE qty_to_ship > 0)) 
                   --Exclude split shipment orders
                   AND (OH.ord_no + OL.item_no) NOT IN ('  680261BAK-695 OBV-097', '  680102BAK-ARTBRDE 97', 
@@ -139,8 +146,14 @@ UNION ALL
 									ELSE 'S' 
 				END,
                rtrim(replace(OH.ship_to_addr_2, ',', '')) AS 'Ship to Street Address', 
-               substring(OH.ship_to_addr_4, 1, (charindex(',', OH.ship_to_addr_4) - 1)) AS 'Ship to City', 
-               substring(OH.ship_to_addr_4, (charindex(',', OH.ship_to_addr_4) + 2), 2) AS 'Ship to State', 
+			   CASE WHEN charindex(',', OH.ship_to_addr_4) > 0
+					THEN substring(OH.ship_to_addr_4, 1, (charindex(',', OH.ship_to_addr_4) - 1)) 
+				    ELSE substring(OH.ship_to_addr_4, 1, (charindex(' ', OH.ship_to_addr_4) - 1)) 
+				END AS 'Ship to City', 
+			   CASE WHEN charindex(',', OH.ship_to_addr_4) > 0
+					THEN substring(OH.ship_to_addr_4, (charindex(',', OH.ship_to_addr_4) + 2), 2)  
+				    ELSE substring(OH.ship_to_addr_4, (charindex(' ', OH.ship_to_addr_4) + 1), 2) 
+				END AS 'Ship to State', 
                'Carrier SCAC (Standard Carrier Alpha Code) Number' = 
 				   CASE WHEN XX.code IS NULL THEN
 								   (SELECT rtrim(XX.code)
@@ -183,30 +196,30 @@ UNION ALL
                     ELSE 'C' 
                END AS 'Status', 
                '' AS 'Ship Condition', 'I' AS 'Part Type'
-FROM  OELINHST_SQL OL  WITH (NOLOCK) INNER JOIN 
-       OEHDRHST_SQL OH WITH (NOLOCK) ON OL.inv_no = OH.inv_no 
-       JOIN  BG_SHIPPED SH WITH (NOLOCK) ON ltrim(OL.ord_no) = ltrim(SH.ord_no) AND OL.line_no = SH.line_no 
+FROM  OELINHST_SQL OL  INNER JOIN 
+       OEHDRHST_SQL OH ON OL.inv_no = OH.inv_no 
+       JOIN  BG_SHIPPED SH ON ltrim(OL.ord_no) = ltrim(SH.ord_no) AND OL.line_no = SH.line_no 
         --Join Below Added On 3/6/13:  Adds view to sum TOTAL qty shipped per ORDER for the A/C column
         --Join Below Removed on 3/7/13:  Making query run too long
        /*LEFT OUTER JOIN
          (SELECT BG.ord_no, BG.item_no, BG.line_no, SUM(BG.qty) AS qty
-		  FROM dbo.BG_SHIPPED BG  WITH (NOLOCK)
+		  FROM dbo.BG_SHIPPED BG  
 		  GROUP BY BG.ord_no, BG.line_no, BG.item_no) AS ShpSumTot ON ShpSumTot.line_no = OL.line_no  
 		           AND ShpSumTot.ord_no = OL.ord_no*/
-       LEFT OUTER JOIN OECUSITM_SQL CI WITH (NOLOCK) ON OL.item_no = CI.item_no AND OH.cus_no = CI.cus_no 
-       LEFT OUTER JOIN EDCSHVFL_SQL XX WITH (NOLOCK) ON SH.carrier_cd = XX.mac_ship_via 
-       --LEFT OUTER JOIN imitmidx_sql IM WITH (NOLOCK) ON OL.item_no = IM.item_no 
+       LEFT OUTER JOIN OECUSITM_SQL CI ON OL.item_no = CI.item_no AND OH.cus_no = CI.cus_no 
+       LEFT OUTER JOIN EDCSHVFL_SQL XX ON SH.carrier_cd = XX.mac_ship_via 
+       --LEFT OUTER JOIN imitmidx_sql IM ON OL.item_no = IM.item_no 
        --Join Below Added On 3/6/13:  Adds view to sum qty shipped per load/tracking # for the qty shipped column
        LEFT OUTER JOIN
 		   (SELECT ord_no, item_no, line_no, SUM(qty) AS qty, tracking_no 
-		   FROM dbo.BG_SHIPPED WITH (NOLOCK)
+		   FROM dbo.BG_SHIPPED 
 		   GROUP BY line_no, item_no, tracking_no, ord_no) AS ShpSum ON ShpSum.line_no = SH.line_no  
 				AND ShpSum.ord_no = SH.ord_no AND ShpSum.tracking_no = SH.tracking_no
 	  --Join Below Added On 8/1/13:  Adds view to sum total qty shipped per item # for the total qty shipped column
 	   LEFT OUTER JOIN
 		   (SELECT ord_no AS ord_no, item_no, SUM(qty) AS qty 
 			--changed from wspikpak on 8/15 to account for items not processed in Wisys (BG_shipped includes invoiced orders not proc. in wisys)
-			FROM bg_shipped WITH (NOLOCK)
+			FROM bg_shipped 
 			GROUP BY item_no, ord_no) AS ShpSumTot ON ShpSumTot.item_no = SH.item_no  
 				AND ShpSumTot.ord_no = SH.ord_no 
 WHERE (ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000') 
@@ -266,9 +279,15 @@ UNION ALL
                'Ship To Name' = CASE WHEN (OH.ship_to_name LIKE 'HAYES%' OR OH.ship_to_name  LIKE 'SCHWARZ%' OR OH.ship_to_name LIKE '%HAYES%'  OR OH.ship_to_name LIKE '%SCHWARZ%') THEN 'CW' 
 									WHEN OH.cus_alt_adr_cd = '3P' THEN '3P'
 									ELSE 'S' END,
-               rtrim(replace(OH.ship_to_addr_2, ',', ''))  AS 'Ship to Street Address', 
-               substring(OH.ship_to_addr_4, 1, (charindex(',', OH.ship_to_addr_4) - 1)) AS 'Ship to City', 
-               substring(OH.ship_to_addr_4, (charindex(',', OH.ship_to_addr_4) + 2), 2) AS 'Ship to State', 
+               rtrim(replace(OH.ship_to_addr_2, ',', ''))  AS 'Ship to Street Address',
+			   CASE WHEN charindex(',', OH.ship_to_addr_4) > 0
+					THEN substring(OH.ship_to_addr_4, 1, (charindex(',', OH.ship_to_addr_4) - 1)) 
+				    ELSE substring(OH.ship_to_addr_4, 1, (charindex(' ', OH.ship_to_addr_4) - 1)) 
+				END AS 'Ship to City', 
+			   CASE WHEN charindex(',', OH.ship_to_addr_4) > 0
+					THEN substring(OH.ship_to_addr_4, (charindex(',', OH.ship_to_addr_4) + 2), 2)  
+				    ELSE substring(OH.ship_to_addr_4, (charindex(' ', OH.ship_to_addr_4) + 1), 2) 
+				END AS 'Ship to State', 
                'Carrier SCAC (Standard Carrier Alpha Code) Number' = '', 
                'Pro Number or Load Number' = '', 
                'Bill of Lading Number' = '', 
@@ -283,10 +302,10 @@ UNION ALL
                CASE WHEN OH.ord_no + OL.item_no = '  680451BAK-ARTBRDE 97' THEN 2 WHEN OH.ord_no + OL.item_no = '  681451BAK-707EC OBV97' THEN 6 WHEN OH.ord_no +
                 OL.item_no = '  681451BAK-707 C OBV97' THEN 3 WHEN OH.ord_no + OL.item_no = '  681591BAK-707EC OBV97' THEN 8 ELSE cast(OL.qty_ordered AS int) 
                END AS 'Supplier Quantity Ordered', 0 AS 'Supplier Quantity Shipped', 'A' AS 'Status', '' AS 'Ship Condition', 'I' AS 'Part Type'
-FROM  OEORDLIN_SQL OL  WITH (NOLOCK) INNER JOIN
-               OEORDHDR_SQL OH  WITH (NOLOCK) ON OL.ord_no = OH.ord_no LEFT OUTER JOIN
-               OECUSITM_SQL CI  WITH (NOLOCK) ON OL.item_no = CI.item_no AND OH.cus_no = CI.cus_no 
-               --LEFT OUTER JOIN imitmidx_sql IM  WITH (NOLOCK) ON OL.item_no = IM.item_no
+FROM  OEORDLIN_SQL OL  INNER JOIN
+               OEORDHDR_SQL OH  ON OL.ord_no = OH.ord_no LEFT OUTER JOIN
+               OECUSITM_SQL CI  ON OL.item_no = CI.item_no AND OH.cus_no = CI.cus_no 
+               --LEFT OUTER JOIN imitmidx_sql IM  ON OL.item_no = IM.item_no
 WHERE ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000') AND OH.oe_po_no > '0' AND OH.ord_type = 'O' AND NOT OL.item_no IN ('ADD ON', 
                'BACKORDER', 'CAP EX', 'FIXTURE REQUEST', 'INITIAL DIV 01', 'INITIAL RM', 'INITIAL SC', 'INITIAL WNM', 'PROTOTYPE METAL', 'PROTOTYPE PLASTIC', 
                'PROTOTYPE WOOD', 'REVIEW ITEM', 'SAMPLE') AND OH.oe_po_no IS NOT NULL AND NOT OH.cus_alt_adr_cd IS NULL AND 
@@ -322,8 +341,16 @@ SELECT '838115' AS 'Supplier Acct Number',
                'Ship To Name' = CASE WHEN (OH.ship_to_name LIKE 'HAYES%' OR OH.ship_to_name  LIKE 'SCHWARZ%' OR OH.ship_to_name LIKE '%HAYES%'  OR OH.ship_to_name LIKE '%SCHWARZ%') THEN 'CW' 
 									WHEN OH.cus_alt_adr_cd = '3P' THEN '3P'
 									ELSE 'S' END, rtrim(replace(OH.ship_to_addr_2, ',', '')) 
-               AS 'Ship to Street Address', substring(OH.ship_to_addr_4, 1, (charindex(',', OH.ship_to_addr_4) - 1)) AS 'Ship to City', substring(OH.ship_to_addr_4, (charindex(',', 
-               OH.ship_to_addr_4) + 2), 2) AS 'Ship to State', 'Carrier SCAC (Standard Carrier Alpha Code) Number' = CASE WHEN XX.code IS NULL THEN
+               AS 'Ship to Street Address', 
+			   CASE WHEN charindex(',', OH.ship_to_addr_4) > 0
+					THEN substring(OH.ship_to_addr_4, 1, (charindex(',', OH.ship_to_addr_4) - 1)) 
+				    ELSE substring(OH.ship_to_addr_4, 1, (charindex(' ', OH.ship_to_addr_4) - 1)) 
+				END AS 'Ship to City', 
+			   CASE WHEN charindex(',', OH.ship_to_addr_4) > 0
+					THEN substring(OH.ship_to_addr_4, (charindex(',', OH.ship_to_addr_4) + 2), 2)  
+				    ELSE substring(OH.ship_to_addr_4, (charindex(' ', OH.ship_to_addr_4) + 1), 2) 
+				END AS 'Ship to State', 
+				'Carrier SCAC (Standard Carrier Alpha Code) Number' = CASE WHEN XX.code IS NULL THEN
                    (SELECT rtrim(XX.code)
                     FROM   EDCSHVFL_SQL XX
                     WHERE OH.ship_via_cd = XX.mac_ship_via) ELSE rtrim(XX.code) END, 
@@ -353,12 +380,12 @@ SELECT '838115' AS 'Supplier Acct Number',
                CASE WHEN (OH.ord_no + OL.item_no) 
                IN ('  701816BSC-16UNIV WMBV') THEN '4' ELSE cast(OL.qty_ordered AS int) END AS 'Supplier Quantity Shipped', 
                'C' AS 'Status', '' AS 'Ship Condition', 'I' AS 'Part Type'
-FROM  OELINHST_SQL OL WITH (NOLOCK) INNER JOIN
-               OEHDRHST_SQL OH WITH (NOLOCK) ON OL.inv_no = OH.inv_no LEFT OUTER JOIN
-               wsPikPak PP WITH (NOLOCK) ON PP.Ord_no = OH.ord_no AND PP.line_no = OL.line_no LEFT OUTER JOIN
-               /*BG_SHIPPED SH ON ltrim(OL.ord_no) = ltrim(SH.ord_no) AND OL.item_no = SH.item_no LEFT OUTER JOIN*/ OECUSITM_SQL CI WITH (NOLOCK) ON OL.item_no = CI.item_no AND 
+FROM  OELINHST_SQL OL INNER JOIN
+               OEHDRHST_SQL OH ON OL.inv_no = OH.inv_no LEFT OUTER JOIN
+               wsPikPak PP ON PP.Ord_no = OH.ord_no AND PP.line_no = OL.line_no LEFT OUTER JOIN
+               /*BG_SHIPPED SH ON ltrim(OL.ord_no) = ltrim(SH.ord_no) AND OL.item_no = SH.item_no LEFT OUTER JOIN*/ OECUSITM_SQL CI ON OL.item_no = CI.item_no AND 
                OH.cus_no = CI.cus_no LEFT OUTER JOIN
-               EDCSHVFL_SQL XX WITH (NOLOCK) ON
+               EDCSHVFL_SQL XX ON
                    (SELECT CASE WHEN OH.cmt_1 LIKE '%,%' THEN (CASE WHEN PP.ParcelType = 'UPS' THEN 'UPG' WHEN PP.ParcelType = 'FedEx' THEN 'FXG' WHEN PP.parcelType
                                     IS NULL THEN (CASE WHEN LEFT(OH.cmt_1, 3) IN
                                        (SELECT sy_code
@@ -366,7 +393,7 @@ FROM  OELINHST_SQL OL WITH (NOLOCK) INNER JOIN
                                         WHERE cd_type = 'V') THEN LEFT(OH.cmt_1, 3) 
                                    ELSE (CASE PP.ParcelType WHEN 'UPS' THEN 'UPG' WHEN 'FedEx' THEN 'FXG' ELSE OH.ship_via_cd END) END) END) END) 
                = XX.mac_ship_via 
-               --LEFT OUTER JOIN imitmidx_sql IM WITH (NOLOCK) ON OL.item_no = OL.item_no
+               --LEFT OUTER JOIN imitmidx_sql IM ON OL.item_no = OL.item_no
 WHERE ltrim(OH.cus_no) IN ('1575', '20938', '25000', '35000') AND OH.oe_po_no > '0' AND OH.ord_type = 'O' AND NOT OL.item_no IN ('ADD ON', 'BACKORDER', 
                'CAP EX', 'FIXTURE REQUEST', 'INITIAL DIV 01', 'INITIAL RM', 'INITIAL SC', 'INITIAL WNM', 
                'PROTOTYPE METAL', 'PROTOTYPE PLASTIC', 'PROTOTYPE WOOD', 'REVIEW ITEM', 'SAMPLE','WAREHOUSE ITEM') 

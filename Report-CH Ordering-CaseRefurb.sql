@@ -1,7 +1,8 @@
 --Created:	1/9/14	     By:	BG
---Last Updated:	2/26/14	 By:	BG
+--Last Updated:	3/13/14	 By:	BG
 --Purpose: Case refurb version of china ordering report [BG_Daily_CH_Order_Report]
---Last Change:  Added stock order qty, avg qps ytd, and sls count columns
+--Last Change: 1) Added stock order qty, avg qps ytd, and sls count columns
+--             2) Added stock order qty calculation (QOH+QSTK+QOO-QOA-(ESS/WMF/QPROJ) 
 
 USE [001]
 GO
@@ -9,7 +10,7 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
---ALTER VIEW [dbo].[BG_Daily_CH_Order_Report_CR] AS
+ALTER VIEW [dbo].[BG_Daily_CH_Order_Report_CR] AS
 SELECT TOP (100) PERCENT '___' AS LN, 
 		Z_IMINVLOC.prod_cat AS Cat,  
 		Z_IMINVLOC.item_no, IMITMIDX_SQL.item_desc_1, IMITMIDX_SQL.item_desc_2, 
@@ -161,7 +162,54 @@ SELECT TOP (100) PERCENT '___' AS LN,
 				   THEN (ROUND(Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated, 0))	            
          ELSE 0 
          END AS [QOH+QOO-QOA-(ESS/WMF/QPROJ)],     
-         
+         CASE  				
+			--If there is an ESS and it is >= QPROJ then use the ESS
+					WHEN imitmidx_Sql.item_note_4 >= 0
+						 AND (imitmidx_Sql.item_note_4 >= Proj.qty_proj) 
+						 AND (Z_IMINVLOC.qty_on_hand > 0)
+					THEN (ROUND(STOCK_ORDER.qty + Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated-Proj.qty_proj) - imitmidx_Sql.item_note_4, 0))
+					WHEN imitmidx_Sql.item_note_4 >= 0
+						 AND (imitmidx_Sql.item_note_4 >= Proj.qty_proj) 
+						 AND (Z_IMINVLOC.qty_on_hand <= 0)					 
+					THEN (ROUND(STOCK_ORDER.qty + Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated-Proj.qty_proj) - imitmidx_Sql.item_note_4, 0))						
+				--If there is a qty projected and an ESS and it is >= ESS or there is no ESS, then use allocations w/ projections
+					WHEN (Proj.qty_proj >= 0) AND (Z_IMINVLOC.qty_on_hand > 0)
+					      AND (Proj.qty_proj >= imitmidx_Sql.item_note_4 OR imitmidx_Sql.item_note_4 IS NULL)
+					THEN (ROUND(STOCK_ORDER.qty + Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated, 0))
+					WHEN (Proj.qty_proj >= 0) AND (Z_IMINVLOC.qty_on_hand <= 0) 
+						  AND (Proj.qty_proj >= imitmidx_Sql.item_note_4 OR imitmidx_Sql.item_note_4 IS NULL) 
+					THEN (ROUND(STOCK_ORDER.qty + Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated, 0))
+			   --If there is a qty projected and an ESS and if qty projected is < then ESS, then use allocations w/o projections
+					WHEN (NOT (IMITMIDX_SQL.item_note_4 IS NULL)) AND (Z_IMINVLOC.qty_on_hand >= 0) AND Proj.qty_proj >= 0
+						 AND Proj.qty_proj < imitmidx_Sql.item_note_4
+				    THEN (ROUND(STOCK_ORDER.qty + Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated - Proj.qty_proj) - IMITMIDX_SQL.item_note_4, 0)) 
+				    WHEN (NOT (IMITMIDX_SQL.item_note_4 IS NULL)) AND (Z_IMINVLOC.qty_on_hand <= 0) AND Proj.qty_proj >= 0 
+						 AND Proj.qty_proj < imitmidx_Sql.item_note_4
+				    THEN (ROUND(STOCK_ORDER.qty + Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated - Proj.qty_proj) - IMITMIDX_SQL.item_note_4, 0)) 
+			   --If there is no qty projected but an ESS, then use ESS and normal allocations                                
+				    WHEN (NOT (IMITMIDX_SQL.item_note_4 IS NULL)) AND Proj.qty_proj IS NULL
+						 AND (Z_IMINVLOC.qty_on_hand >= 0) 
+				    THEN (ROUND(STOCK_ORDER.qty + Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated - IMITMIDX_SQL.item_note_4, 0)) 
+				    WHEN (NOT (IMITMIDX_SQL.item_note_4 IS NULL)) AND (Z_IMINVLOC.qty_on_hand <= 0) 
+				    THEN (ROUND(STOCK_ORDER.qty + Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated - IMITMIDX_SQL.item_note_4, 0)) 
+			   --If there is no ESS but an qty projected, then use qty projected and allocations w/o projections
+				   WHEN (IMITMIDX_SQL.item_note_4 IS NULL) 
+						 AND Proj.qty_proj >= 0	 AND (Z_IMINVLOC.qty_on_hand >= 0) 
+				   THEN (ROUND(STOCK_ORDER.qty + Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated - Proj.qty_proj) - Proj.qty_proj, 0))	
+				   WHEN (IMITMIDX_SQL.item_note_4 IS NULL) 
+						AND Proj.qty_proj >= 0 AND (Z_IMINVLOC.qty_on_hand < 0)  
+				   THEN (ROUND(STOCK_ORDER.qty + Z_IMINVLOC.qty_on_ord - (z_iminvloc_qall.qty_allocated - Proj.qty_proj) - Proj.qty_proj, 0))				
+			  --If there is no forecast and no ESS and no qty projected, then use none		
+				   WHEN (IMITMIDX_SQL.item_note_4 IS NULL) 
+						AND Proj.qty_proj IS NULL
+						AND (Z_IMINVLOC.qty_on_hand >= 0) 
+				   THEN (ROUND(STOCK_ORDER.qty + Z_IMINVLOC.qty_on_hand + Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated, 0))     
+				   WHEN (IMITMIDX_SQL.item_note_4 IS NULL) 
+						AND Proj.qty_proj IS NULL
+						AND (Z_IMINVLOC.qty_on_hand < 0) 
+				   THEN (ROUND(STOCK_ORDER.qty + Z_IMINVLOC.qty_on_ord - z_iminvloc_qall.qty_allocated, 0))	            
+         ELSE 0 
+         END AS [QOH+QSTK+QOO-QOA-(ESS/WMF/QPROJ)],    
         /*     
        CASE WHEN (NOT (imitmidx_sql.extra_1 = 'P') OR imitmidx_sql.extra_1 IS NULL OR  imitmidx_sql.extra_6 = 'CH-US') 
 				AND (Z_IMINVLOC.qty_on_hand <= 0) 
@@ -200,16 +248,16 @@ SELECT TOP (100) PERCENT '___' AS LN,
 	   ROUND((Z_IMINVLOC_USAGE.usage_ytd / SLS_COUNT.[COUNT]),0) AS [AVG QPS YTD],
 	   STOCK_ORDER.QTY AS [STOCK ORD QTY]	          
            
-FROM  dbo.Z_IMINVLOC AS Z_IMINVLOC WITH (NOLOCK) INNER JOIN
-               dbo.imitmidx_sql AS IMITMIDX_SQL WITH (NOLOCK) ON Z_IMINVLOC.item_no = IMITMIDX_SQL.item_no LEFT OUTER JOIN
-               dbo.Z_IMINVLOC_QALL WITH (NOLOCK) ON dbo.Z_IMINVLOC_QALL.item_no = Z_IMINVLOC.item_no LEFT OUTER JOIN
-               dbo.Z_IMINVLOC_USAGE WITH (NOLOCK) ON dbo.Z_IMINVLOC_USAGE.item_no = Z_IMINVLOC.item_no LEFT OUTER JOIN
-               dbo.Z_IMINVLOC_QOH_CHECK AS QC WITH (NOLOCK) ON QC.item_no = Z_IMINVLOC.item_no LEFT OUTER JOIN
-               dbo.BG_WM_Current_Projections AS PROJ WITH (NOLOCK) ON PROJ.item_no = IMITMIDX_SQL.item_no 
+FROM  dbo.Z_IMINVLOC AS Z_IMINVLOC INNER JOIN
+               dbo.imitmidx_sql AS IMITMIDX_SQL ON Z_IMINVLOC.item_no = IMITMIDX_SQL.item_no LEFT OUTER JOIN
+               dbo.Z_IMINVLOC_QALL ON dbo.Z_IMINVLOC_QALL.item_no = Z_IMINVLOC.item_no LEFT OUTER JOIN
+               dbo.Z_IMINVLOC_USAGE ON dbo.Z_IMINVLOC_USAGE.item_no = Z_IMINVLOC.item_no LEFT OUTER JOIN
+               dbo.Z_IMINVLOC_QOH_CHECK AS QC ON QC.item_no = Z_IMINVLOC.item_no LEFT OUTER JOIN
+               dbo.BG_WM_Current_Projections AS PROJ ON PROJ.item_no = IMITMIDX_SQL.item_no 
 			   LEFT OUTER JOIN BG_OE_SALESORDER_COUNT_YTD AS SLS_COUNT ON SLS_COUNT.item_no = IMITMIDX_SQL.item_no
 			   LEFT OUTER JOIN BG_OE_STOCK_ORDER_QTY AS STOCK_ORDER ON STOCK_ORDER.item_no = IMITMIDX_SQL.item_no
 WHERE  (Z_IMINVLOC.prod_cat IN ('036', '037', '111', '336', '102','337')) 
 		AND IMITMIDX_SQL.activity_cd = 'A'
 		--Test
-		--AND IMITMIDX_SQL.item_no = '23" SPT BAR GB' 
+		--AND IMITMIDX_SQL.item_no = 'CR UPR MR BRKT' 
 ORDER BY Z_IMINVLOC.item_no

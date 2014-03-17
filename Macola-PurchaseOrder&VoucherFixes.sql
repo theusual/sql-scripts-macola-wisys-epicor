@@ -8,13 +8,13 @@ ROLLBACK TRANSACTION
 --Review/verify necessary fields that will be updated in imrechst table*/
 SELECT ord_no, line_no, rec_hst_dt, rec_hst_tm, item_no, ctl_no, vend_no, qty_ordered, qty_received, qty_received_to_dt, batch_id, dollars_inv, qty_inv, vchr_dt, vchr_no, system_dt, ID
 FROM imrechst_sql 
-WHERE --LTRIM(ord_no) IN ('12743700') AND line_no in (1,3,4,5)
-		vchr_no = '  459526' 
+WHERE LTRIM(ord_no) IN ('9500') --AND line_no in (1,3,4,5)
+		--vchr_no = '    4085' 
 ORDER BY ord_no, line_no, system_dt
 
 --Review necessary fields to update in poordlin table*/
 SELECT ord_no, line_no, vend_no, item_no, qty_ordered, qty_received, act_unit_cost, qty_inv, dollars_inv, receipt_dt
-FROM poordlin_sql WHERE LTRIM(ord_no) IN ('889500') AND line_no in (2)
+FROM poordlin_sql WHERE LTRIM(ord_no) IN ('9500') AND line_no in (2)
 
 ------------------------------------------------------------------------------------------------------------------------------------------
 /* AP VOUCHER FIXES */
@@ -24,10 +24,10 @@ UPDATE imrechst_sql
 SET vchr_no = NULL, vchr_dt = NULL, qty_inv = 0, dollars_inv = 0, batch_id = NULL 
 		--ONLY INCLUDE THESE IF RESETTING A RECEIPT, NOT JUST A VOUCHER ISSUES
 		  --, qty_received_to_dt = 0, qty_received = 0
-WHERE   --LTRIM(ord_no) IN ('12857300') AND line_no in (1,3,4,5)  
+WHERE   LTRIM(ord_no) IN ('9500') --AND line_no in (1,3,4,5)  
 	    /*Use ctl_no for specific lines of receipts on the same line item*/
         --AND ctl_no = '33617900'
-		vchr_no = '  459526'  
+		--vchr_no = '  459526'  
 COMMIT TRAN
 
 --***Update poordlin records to match above changes in imrechst table

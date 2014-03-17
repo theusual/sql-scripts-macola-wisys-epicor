@@ -8,8 +8,8 @@ SET @Month = DATENAME(MONTH,DATEADD(MONTH,@MonthsBack,GETDATE()))
 SELECT @Month
 
 SELECT     DISTINCT TOP (100) PERCENT QtyOrd.item_no , EDI.edi_item_num AS SAP#, IM.item_desc_1, IM.item_desc_2, INV.qty_on_hand AS QOH, 
-			QtyOrd.QtyOrd AS [QtyOrd], Forecast.[Jan 2014] AS [Forecast], (Forecast.[Jan 2014] - QtyOrd.QtyOrd) AS [DIFF], 
-			CASE WHEN Forecast.[Jan 2014] IS NULL THEN 'N' ELSE 'Y' END AS [On Forecast?]
+			QtyOrd.QtyOrd AS [QtyOrd], Forecast.[Feb 2014] AS [Forecast], (Forecast.[Feb 2014] - QtyOrd.QtyOrd) AS [DIFF], 
+			CASE WHEN Forecast.[Feb 2014] IS NULL THEN 'N' ELSE 'Y' END AS [On Forecast?]
 FROM         (
 				SELECT SUM(QtyOrd) AS QtyOrd, item_no
 				FROM (
@@ -56,14 +56,13 @@ FROM         (
 						  --Exclude CapEx
 						  AND OH.user_def_fld_3 NOT LIKE '%CAPEX%'
 						  --Exclude Projections
-
 					GROUP BY item_no
 					) AS Tot
 				GROUP BY item_no
 				) AS QtyOrd
 			 JOIN edcitmfl_sql EDI ON EDI.mac_item_num = QtyOrd.item_no
              LEFT OUTER JOIN (
-							  SELECT   SUM([Jan 2014]) AS [Jan 2014],
+							  SELECT   SUM([Feb 2014]) AS [Feb 2014],
 									   --SUM([Feb 2014]) AS [Feb 2014],
 									  -- SUM([Mar 2014]) AS [Mar 2014],
 									   --SUM([Apr 2014]) AS [Apr 2014], 
@@ -75,7 +74,7 @@ FROM         (
 									   --SUM([Oct 2014]) AS [Oct 2014],
 									   --SUM([Nov 2014]) AS [Nov 2014],
 									   [Article]
-							   FROM  dbo.WM_Forecast_2014_January AS Forecast 
+							   FROM  dbo.WM_Forecast_2014_February AS Forecast 
 							   GROUP BY [Article]
 							   ) AS Forecast ON Forecast.[Article] =  CAST(EDI.edi_item_num AS VARCHAR)
 			 JOIN Z_IMINVLOC INV ON INV.item_no = QtyOrd.item_no
@@ -85,11 +84,11 @@ FROM         (
 ORDER BY QtyOrd.item_no DESC
 
 --To check numbers:
-SELECT * FROM dbo.WM_Forecast_2014_January WHERE [Article] = '100034476'
+SELECT * FROM dbo.WM_Forecast_2014_February WHERE [Article] = '100061117'
 
 SELECT * 
 FROM oehdrhst_sql OH JOIN oelinhst_sql OL ON OH.inv_no = OL.inv_no 
-WHERE [item_no] = '58685-2 BK'  AND entered_dt > '09/01/2014'              
+WHERE [item_no] = 'WM-MOVIEDUMPBIN'  AND MONTH(entered_dt) = 2              
 
 
 
